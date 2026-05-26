@@ -48,6 +48,7 @@ export default function Battle() {
       resetTimer()
     },
     'message-added': ({ nickname: sender, text, playerIndex }) => {
+      if (sender === nickname) return
       setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
     },
     'turn-update': ({ currentTurnIndex, currentNickname, turnCount, messages: serverMessages }) => {
@@ -99,7 +100,9 @@ export default function Battle() {
   function handleSend(e) {
     e.preventDefault()
     if (!isMyTurn || !input.trim() || isJudging) return
-    socket.emit('send-message', { text: input.trim() })
+    const text = input.trim()
+    setMessages(prev => [...prev, { nickname, text, playerIndex: currentTurnIndex }])
+    socket.emit('send-message', { text })
     setInput('')
   }
 
