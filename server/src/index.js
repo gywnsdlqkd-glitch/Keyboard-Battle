@@ -5,9 +5,6 @@ import { Server } from 'socket.io'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 import {
   createRoom,
   joinRoom,
@@ -24,6 +21,9 @@ import {
   TURN_DURATION_MS,
 } from './gameManager.js'
 import { judge } from './aiJudge.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const app = express()
 app.use(cors())
