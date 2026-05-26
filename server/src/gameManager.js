@@ -11,6 +11,7 @@ export function createRoom(hostSocketId, nickname, topic) {
     id: roomId,
     topic,
     players: [{ id: hostSocketId, nickname }],
+    spectators: [],
     state: 'waiting',
     currentTurnIndex: 0,
     turnCount: 0,
@@ -81,6 +82,35 @@ export function nextTurn(room) {
 
   room.currentTurnIndex = room.turnCount % 2
   return { finished: false, currentTurnIndex: room.currentTurnIndex }
+}
+
+export function getBattlingRoomList() {
+  return [...rooms.values()]
+    .filter(r => r.state === 'battling' || r.state === 'judging')
+    .map(r => ({
+      id: r.id,
+      topic: r.topic,
+      players: r.players.map(p => p.nickname),
+      turnCount: r.turnCount,
+      spectatorCount: r.spectators.length,
+    }))
+}
+
+export function addSpectator(room, socketId) {
+  if (!room.spectators.includes(socketId)) {
+    room.spectators.push(socketId)
+  }
+}
+
+export function removeSpectatorFromRoom(socketId) {
+  for (const room of rooms.values()) {
+    const idx = room.spectators.indexOf(socketId)
+    if (idx !== -1) {
+      room.spectators.splice(idx, 1)
+      return room
+    }
+  }
+  return null
 }
 
 export function deleteRoom(roomId) {

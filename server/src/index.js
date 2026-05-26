@@ -14,10 +14,13 @@ import {
   getRoom,
   getRoomBySocketId,
   getRoomList,
+  getBattlingRoomList,
   startGame,
   addMessage,
   nextTurn,
   removePlayerFromRoom,
+  addSpectator,
+  removeSpectatorFromRoom,
   TURN_DURATION_MS,
 } from './gameManager.js'
 import { judge } from './aiJudge.js'
@@ -85,6 +88,7 @@ io.on('connection', socket => {
   console.log('접속:', socket.id)
 
   socket.emit('room-list', getRoomList())
+  socket.emit('battling-list', getBattlingRoomList())
 
   socket.on('create-room', ({ nickname, topic }) => {
     if (!nickname?.trim() || !topic?.trim()) return
@@ -138,6 +142,9 @@ io.on('connection', socket => {
         totalTurns: 10,
       })
 
+      io.emit('room-list', getRoomList())
+      io.emit('battling-list', getBattlingRoomList())
+
       startTurnTimer(room)
     }, 1000)
 
@@ -164,6 +171,27 @@ io.on('connection', socket => {
 
   socket.on('get-room-list', () => {
     socket.emit('room-list', getRoomList())
+    socket.emit('battling-list', getBattlingRoomList())
+  })
+
+  socket.on('watch-room', ({ roomId }) => {
+    const room = getRoom(roomId)
+    if (!room || (room.state !== 'battling' && room.state !== 'judging')) {
+      socket.emit('watch-error', { message: '관람할 수 없는 방입니다.' })
+      return
+    }
+    addSpectator(room, socket.id)
+    socket.join(room.id)
+    socket.emit('spectate-state', {
+      players: room.players.map(p => p.nickname),
+      topic: room.topic,
+      messages: room.messages,
+      currentTurnIndex: room.currentTurnIndex,
+      currentNickname: room.players[room.currentTurnIndex]?.nickname,
+      turnCount: room.turnCount,
+      state: room.state,
+    })
+    console.log(`관람자 입장: ${socket.id} → 방 ${roomId}`)
   })
 
   socket.on('disconnect', () => {
@@ -171,6 +199,9 @@ io.on('connection', socket => {
     if (room) {
       io.to(room.id).emit('opponent-left')
       io.emit('room-list', getRoomList())
+      io.emit('battling-list', getBattlingRoomList())
+    } else {
+      removeSpectatorFromRoom(socket.id)
     }
     console.log('접속 종료:', socket.id)
   })

@@ -1,0 +1,224 @@
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useSocket } from '../hooks/useSocket'
+
+const TURN_DURATION = 30
+
+export default function Spectate() {
+  const { roomId } = useParams()
+  const navigate = useNavigate()
+
+  const [messages, setMessages] = useState([])
+  const [players, setPlayers] = useState([])
+  const [topic, setTopic] = useState('')
+  const [currentTurnIndex, setCurrentTurnIndex] = useState(0)
+  const [currentNickname, setCurrentNickname] = useState('')
+  const [turnCount, setTurnCount] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
+  const [isJudging, setIsJudging] = useState(false)
+  const [timeoutMsg, setTimeoutMsg] = useState('')
+  const [error, setError] = useState('')
+
+  const timerRef = useRef(null)
+  const messagesEndRef = useRef(null)
+
+  function resetTimer() {
+    if (timerRef.current) clearInterval(timerRef.current)
+    setTimeLeft(TURN_DURATION)
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const socket = useSocket({
+    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, state }) => {
+      setPlayers(players)
+      setTopic(topic)
+      setMessages(messages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
+      setCurrentTurnIndex(currentTurnIndex)
+      setCurrentNickname(currentNickname)
+      setTurnCount(turnCount)
+      if (state === 'judging') {
+        setIsJudging(true)
+      } else {
+        resetTimer()
+      }
+    },
+    'message-added': ({ nickname: sender, text, playerIndex }) => {
+      setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
+    },
+    'turn-update': ({ currentTurnIndex, currentNickname, turnCount }) => {
+      setCurrentTurnIndex(currentTurnIndex)
+      setCurrentNickname(currentNickname)
+      setTurnCount(turnCount)
+      setTimeoutMsg('')
+      resetTimer()
+    },
+    'turn-timeout': ({ nickname: timedOutNick }) => {
+      setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)
+    },
+    'game-judging': () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      setIsJudging(true)
+    },
+    'game-result': (result) => {
+      sessionStorage.setItem('gameResult', JSON.stringify(result))
+      navigate(`/result/${roomId}`)
+    },
+    'watch-error': ({ message }) => {
+      setError(message)
+    },
+    'opponent-left': () => {
+      alert('배틀이 종료되었습니다.')
+      navigate('/')
+    },
+  })
+
+  useEffect(() => {
+    socket.emit('watch-room', { roomId })
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-5xl mb-4">😢</div>
+          <p className="text-red-400 font-bold mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-yellow-400 text-black font-black px-6 py-2 rounded-lg"
+          >
+            로비로 돌아가기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isJudging) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-bounce">⚖️</div>
+          <h2 className="text-2xl font-black text-yellow-400 mb-2">AI 판정 중...</h2>
+          <p className="text-gray-400">AI가 배틀 로그를 분석하고 있습니다</p>
+          <div className="flex justify-center gap-1 mt-6">
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full bg-yellow-400 animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const totalTurns = 10
+  const progress = (turnCount / totalTurns) * 100
+  const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
+
+  return (
+    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-2 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-blue-400 font-bold bg-blue-400/10 border border-blue-400/30 px-3 py-1 rounded-full">
+          👁 관람 중
+        </span>
+        <button
+          onClick={() => navigate('/')}
+          className="text-xs text-gray-500 hover:text-gray-300 transition"
+        >
+          나가기
+        </button>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">주제</span>
+            <span className="text-sm font-bold text-yellow-400">"{topic}"</span>
+          </div>
+          <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
+        </div>
+        <div className="w-full bg-gray-800 rounded-full h-1.5">
+          <div
+            className="bg-yellow-400 h-1.5 rounded-full transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 mb-3 flex items-center justify-between">
+        <div className="flex gap-4">
+          {players.map((p, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full ${currentTurnIndex === i ? 'bg-green-400 animate-pulse' : 'bg-gray-600'}`} />
+              <span className={`text-sm font-bold ${currentTurnIndex === i ? 'text-white' : 'text-gray-500'}`}>
+                {p}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className={`text-2xl font-black tabular-nums ${timerColor}`}>
+          {timeLeft}s
+        </div>
+      </div>
+
+      {timeoutMsg && (
+        <div className="bg-red-900/30 border border-red-700 rounded-lg px-3 py-2 mb-3 text-red-300 text-sm text-center">
+          {timeoutMsg}
+        </div>
+      )}
+
+      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100vh-280px)]">
+        {messages.length === 0 ? (
+          <div className="h-full flex items-center justify-center">
+            <p className="text-gray-600 text-sm">배틀이 시작되기를 기다리는 중...</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {messages.map((msg, i) => {
+              const isLeft = msg.playerIndex === 0
+              return (
+                <div key={i} className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                    isLeft
+                      ? 'bg-gray-800 text-white rounded-bl-sm'
+                      : 'bg-yellow-400 text-black rounded-br-sm'
+                  }`}>
+                    <p className={`text-xs mb-0.5 font-bold ${isLeft ? 'text-gray-400' : 'text-yellow-800'}`}>
+                      {msg.nickname}
+                    </p>
+                    <p className="text-sm font-medium break-words">{msg.text}</p>
+                  </div>
+                </div>
+              )
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 text-center">
+        <p className="text-gray-500 text-sm">
+          {currentNickname ? `⚡ ${currentNickname}의 턴` : '대기 중...'}
+        </p>
+      </div>
+    </div>
+  )
+}

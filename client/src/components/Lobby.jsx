@@ -8,6 +8,7 @@ export default function Lobby() {
   const [topic, setTopic] = useState('')
   const [roomId, setRoomId] = useState('')
   const [roomList, setRoomList] = useState([])
+  const [battlingRooms, setBattlingRooms] = useState([])
   const [tab, setTab] = useState('create')
   const [error, setError] = useState('')
 
@@ -24,6 +25,7 @@ export default function Lobby() {
       navigate(`/room/${roomId}`)
     },
     'room-list': (list) => setRoomList(list),
+    'battling-list': (list) => setBattlingRooms(list),
     'join-error': ({ message }) => setError(message),
   })
 
@@ -153,6 +155,34 @@ export default function Lobby() {
                     className="bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-black px-3 py-1.5 rounded-lg transition"
                   >
                     입장
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {battlingRooms.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">🔥 진행 중인 배틀</h2>
+            <div className="space-y-2">
+              {battlingRooms.map(room => (
+                <div
+                  key={room.id}
+                  className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3"
+                >
+                  <div>
+                    <p className="font-bold text-white text-sm">{room.topic}</p>
+                    <p className="text-xs text-gray-500">
+                      {room.players[0]} vs {room.players[1]} · {room.turnCount}/10턴
+                      {room.spectatorCount > 0 && ` · 👁 ${room.spectatorCount}명 관람 중`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/spectate/${room.id}`)}
+                    className="bg-blue-500 hover:bg-blue-400 text-white text-xs font-black px-3 py-1.5 rounded-lg transition"
+                  >
+                    관람
                   </button>
                 </div>
               ))}
