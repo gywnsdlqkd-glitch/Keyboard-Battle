@@ -26,6 +26,7 @@ export default function Battle() {
   const timerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const inputRef = useRef(null)
   const prevTimeLeft = useRef(TURN_DURATION)
 
   const isMyTurn = currentNickname === nickname
@@ -163,6 +164,12 @@ export default function Battle() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    if (isMyTurn) {
+      setTimeout(() => inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 300)
+    }
+  }, [isMyTurn])
+
   function handleSend(e) {
     e.preventDefault()
     if (!isMyTurn || !input.trim() || isJudging) return
@@ -288,6 +295,7 @@ export default function Battle() {
       <div className={`rounded-xl p-0.5 ${isMyTurn ? 'bg-yellow-400' : 'bg-gray-700'}`}>
         <form onSubmit={handleSend} className="flex gap-2 bg-gray-900 rounded-xl p-2">
           <input
+            ref={inputRef}
             className="flex-1 bg-gray-800 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none disabled:opacity-40"
             placeholder={isMyTurn ? '킹받게 쳐봐... 💬' : '상대방 턴입니다'}
             value={input}

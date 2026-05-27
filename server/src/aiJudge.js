@@ -8,7 +8,7 @@ function createModel(modelName) {
     model: modelName,
     generationConfig: {
       thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 500,
+      maxOutputTokens: 600,
     },
   })
 }
@@ -33,7 +33,7 @@ export async function judge(topic, players, messages) {
 ${chatLog}
 
 JSON으로만 답해:
-{"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자}`
+{"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"배틀에서 가장 킹받은 메시지 원문 (없으면 빈 문자열)"}`
 
   for (const modelName of MODELS) {
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -54,5 +54,6 @@ JSON으로만 답해:
     comment: 'AI 판정 중 오류가 발생했습니다. 임시로 선공 플레이어를 승자로 선정합니다.',
     player1Score: 50,
     player2Score: 50,
+    bestMessage: '',
   }
 }

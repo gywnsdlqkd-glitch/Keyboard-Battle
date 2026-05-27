@@ -22,6 +22,7 @@ import {
   removeSpectatorFromRoom,
   saveResult,
   getResult,
+  resetRoomForRematch,
   TURN_DURATION_MS,
 } from './gameManager.js'
 import { judge } from './aiJudge.js'
@@ -40,6 +41,8 @@ const io = new Server(httpServer, {
 
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
+// key: roomId, value: requester socketId
+const rematchRequests = new Map()
 
 app.get('/health', (_, res) => res.json({ ok: true }))
 
@@ -148,6 +151,9 @@ io.on('connection', socket => {
 
     io.emit('room-list', getRoomList())
 
+    ;[3, 2, 1].forEach((n, i) => {
+      setTimeout(() => io.to(room.id).emit('countdown', { count: n }), i * 1000)
+    })
     setTimeout(() => {
       startGame(room)
 
@@ -164,7 +170,7 @@ io.on('connection', socket => {
       io.emit('battling-list', getBattlingRoomList())
 
       startTurnTimer(room)
-    }, 1000)
+    }, 3000)
 
     console.log(`방 입장: ${room.id} | ${nickname} 합류`)
   })
@@ -234,6 +240,48 @@ io.on('connection', socket => {
     if (!player) return
 
     socket.to(room.id).emit('typing-indicator', { nickname: player.nickname })
+  })
+
+  socket.on('rematch-request', () => {
+    const room = getRoomBySocketId(socket.id)
+    if (!room || room.state !== 'done') return
+    rematchRequests.set(room.id, socket.id)
+    socket.to(room.id).emit('rematch-requested')
+  })
+
+  socket.on('rematch-accept', () => {
+    const room = getRoomBySocketId(socket.id)
+    if (!room) return
+    const requesterSocketId = rematchRequests.get(room.id)
+    if (!requesterSocketId) return
+    rematchRequests.delete(room.id)
+
+    const resetRoom = resetRoomForRematch(room.id)
+    if (!resetRoom) return
+
+    startGame(resetRoom)
+
+    ;[3, 2, 1].forEach((n, i) => {
+      setTimeout(() => io.to(resetRoom.id).emit('countdown', { count: n }), i * 1000)
+    })
+    setTimeout(() => {
+      io.to(resetRoom.id).emit('rematch-start', {
+        players: resetRoom.players.map(p => p.nickname),
+        topic: resetRoom.topic,
+        currentTurnIndex: 0,
+        currentNickname: resetRoom.players[0].nickname,
+        turnCount: 0,
+        totalTurns: 10,
+      })
+      startTurnTimer(resetRoom)
+    }, 3000)
+  })
+
+  socket.on('rematch-decline', () => {
+    const room = getRoomBySocketId(socket.id)
+    if (!room) return
+    rematchRequests.delete(room.id)
+    socket.to(room.id).emit('rematch-declined')
   })
 
   socket.on('get-room-list', () => {

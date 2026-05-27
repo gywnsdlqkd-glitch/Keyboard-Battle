@@ -5,7 +5,7 @@ import { getRandomTopic } from '../data/topics'
 
 export default function Lobby() {
   const navigate = useNavigate()
-  const [nickname, setNickname] = useState(sessionStorage.getItem('nickname') || '')
+  const [nickname, setNickname] = useState(localStorage.getItem('nickname') || '')
   const [topic, setTopic] = useState('')
   const [roomId, setRoomId] = useState('')
   const [roomList, setRoomList] = useState([])
@@ -15,11 +15,13 @@ export default function Lobby() {
 
   const socket = useSocket({
     'room-created': ({ roomId, topic, nickname }) => {
+      localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
       navigate(`/room/${roomId}`)
     },
     'room-joined': ({ roomId, topic, nickname, opponent }) => {
+      localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
       sessionStorage.setItem('opponent', opponent)

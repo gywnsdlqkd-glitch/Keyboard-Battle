@@ -1,0 +1,12 @@
+{
+  "name": "Keyboard Battle",
+  "short_name": "KB",
+  "description": "누가 더 킹받게 쳤나? AI가 판정한다",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#facc15",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

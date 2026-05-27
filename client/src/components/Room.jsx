@@ -8,11 +8,15 @@ export default function Room() {
   const nickname = sessionStorage.getItem('nickname')
   const topic = sessionStorage.getItem('topic')
   const [opponent, setOpponent] = useState(sessionStorage.getItem('opponent') || null)
+  const [countdown, setCountdown] = useState(null)
 
   const socket = useSocket({
     'player-joined': ({ nickname: opponentNick }) => {
       setOpponent(opponentNick)
       sessionStorage.setItem('opponent', opponentNick)
+    },
+    'countdown': ({ count }) => {
+      setCountdown(count)
     },
     'game-start': (gameData) => {
       sessionStorage.setItem('gameData', JSON.stringify(gameData))
@@ -93,9 +97,14 @@ export default function Room() {
           )}
         </div>
 
-        {opponent && (
+        {countdown !== null ? (
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <div className="text-8xl font-black text-yellow-400 animate-pulse tabular-nums">{countdown}</div>
+            <p className="text-gray-400 text-sm">배틀 준비!</p>
+          </div>
+        ) : opponent ? (
           <p className="mt-6 text-green-400 font-bold animate-pulse">게임 시작!</p>
-        )}
+        ) : null}
       </div>
     </div>
   )
