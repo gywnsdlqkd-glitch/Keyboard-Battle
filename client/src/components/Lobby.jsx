@@ -85,7 +85,7 @@ export default function Lobby() {
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 transition"
               placeholder="배틀 닉네임"
               value={nickname}
-              onChange={e => setNickname(e.target.value)}
+              onChange={e => { setNickname(e.target.value); setError('') }}
               maxLength={12}
             />
           </div>
