@@ -16,6 +16,8 @@ import {
   addMessage,
   nextTurn,
   removePlayerFromRoom,
+  markPlayerDisconnected,
+  rejoinRoom,
   addSpectator,
   removeSpectatorFromRoom,
   TURN_DURATION_MS,
@@ -33,6 +35,9 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 })
+
+// key: oldSocketId, value: { timer, roomId }
+const pendingDisconnects = new Map()
 
 app.get('/health', (_, res) => res.json({ ok: true }))
 
@@ -63,14 +68,17 @@ async function handleTurnEnd(room, isTimeout = false) {
 
     const judgment = await judge(room.topic, room.players, room.messages)
 
-    io.to(room.id).emit('game-result', {
+    const resultPayload = {
       winner: judgment.winner,
       comment: judgment.comment,
       player1Score: judgment.player1Score,
       player2Score: judgment.player2Score,
       players: room.players.map(p => p.nickname),
       messages: room.messages,
-    })
+    }
+    room.lastResult = resultPayload
+    room.state = 'done'
+    io.to(room.id).emit('game-result', resultPayload)
     return
   }
 
@@ -151,6 +159,45 @@ io.on('connection', socket => {
     console.log(`방 입장: ${room.id} | ${nickname} 합류`)
   })
 
+  socket.on('rejoin-room', ({ roomId, nickname }) => {
+    if (!roomId?.trim() || !nickname?.trim()) return
+
+    const result = rejoinRoom(roomId.trim(), socket.id, nickname.trim())
+
+    if (result.error) {
+      socket.emit('rejoin-error', { message: result.error })
+      return
+    }
+
+    const { room, playerIndex, oldSocketId } = result
+
+    const pending = pendingDisconnects.get(oldSocketId)
+    if (pending) {
+      clearTimeout(pending.timer)
+      pendingDisconnects.delete(oldSocketId)
+    }
+
+    socket.join(room.id)
+
+    socket.emit('rejoin-success', {
+      players: room.players.map(p => p.nickname),
+      topic: room.topic,
+      messages: room.messages,
+      currentTurnIndex: room.currentTurnIndex,
+      currentNickname: room.players[room.currentTurnIndex]?.nickname,
+      turnCount: room.turnCount,
+      playerIndex,
+    })
+
+    socket.to(room.id).emit('opponent-reconnected', { nickname: nickname.trim() })
+
+    if (room.state === 'battling' && !room.timer) {
+      startTurnTimer(room)
+    }
+
+    console.log(`재접속: ${nickname} → 방 ${roomId}`)
+  })
+
   socket.on('send-message', ({ text }) => {
     if (!text?.trim()) return
 
@@ -169,6 +216,16 @@ io.on('connection', socket => {
     handleTurnEnd(room)
   })
 
+  socket.on('typing', () => {
+    const room = getRoomBySocketId(socket.id)
+    if (!room || room.state !== 'battling') return
+
+    const player = room.players.find(p => p.id === socket.id)
+    if (!player) return
+
+    socket.to(room.id).emit('typing-indicator', { nickname: player.nickname })
+  })
+
   socket.on('get-room-list', () => {
     socket.emit('room-list', getRoomList())
     socket.emit('battling-list', getBattlingRoomList())
@@ -176,7 +233,7 @@ io.on('connection', socket => {
 
   socket.on('watch-room', ({ roomId }) => {
     const room = getRoom(roomId)
-    if (!room || (room.state !== 'battling' && room.state !== 'judging')) {
+    if (!room || (room.state !== 'battling' && room.state !== 'judging' && room.state !== 'done')) {
       socket.emit('watch-error', { message: '관람할 수 없는 방입니다.' })
       return
     }
@@ -191,17 +248,38 @@ io.on('connection', socket => {
       turnCount: room.turnCount,
       state: room.state,
     })
+    if (room.state === 'done' && room.lastResult) {
+      socket.emit('game-result', room.lastResult)
+    }
     console.log(`관람자 입장: ${socket.id} → 방 ${roomId}`)
   })
 
   socket.on('disconnect', () => {
-    const room = removePlayerFromRoom(socket.id)
+    const room = markPlayerDisconnected(socket.id)
+
     if (room) {
-      io.to(room.id).emit('opponent-left')
-      io.emit('room-list', getRoomList())
-      io.emit('battling-list', getBattlingRoomList())
+      io.to(room.id).emit('opponent-disconnected')
+
+      const timer = setTimeout(() => {
+        pendingDisconnects.delete(socket.id)
+        const removedRoom = removePlayerFromRoom(socket.id)
+        if (removedRoom) {
+          io.to(removedRoom.id).emit('opponent-left')
+          io.emit('room-list', getRoomList())
+          io.emit('battling-list', getBattlingRoomList())
+        }
+      }, 15000)
+
+      pendingDisconnects.set(socket.id, { timer, roomId: room.id })
     } else {
-      removeSpectatorFromRoom(socket.id)
+      const removedRoom = removePlayerFromRoom(socket.id)
+      if (removedRoom) {
+        io.to(removedRoom.id).emit('opponent-left')
+        io.emit('room-list', getRoomList())
+        io.emit('battling-list', getBattlingRoomList())
+      } else {
+        removeSpectatorFromRoom(socket.id)
+      }
     }
     console.log('접속 종료:', socket.id)
   })

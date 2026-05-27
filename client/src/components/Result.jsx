@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { sounds } from '../utils/sounds'
 
 export default function Result() {
   const { roomId } = useParams()
@@ -8,7 +9,7 @@ export default function Result() {
   const topic = sessionStorage.getItem('topic')
 
   const [result, setResult] = useState(null)
-  const [showConfetti, setShowConfetti] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('gameResult')
@@ -18,13 +19,35 @@ export default function Result() {
     }
     const data = JSON.parse(stored)
     setResult(data)
-    setShowConfetti(true)
   }, [navigate])
+
+  useEffect(() => {
+    if (!result) return
+    const isWinner = result.winner === nickname
+    if (isWinner) sounds.win()
+    else sounds.lose()
+  }, [result, nickname])
 
   function handleRematch() {
     sessionStorage.removeItem('gameResult')
     sessionStorage.removeItem('gameData')
+    sessionStorage.removeItem('battleSession')
     navigate('/')
+  }
+
+  function handleShare() {
+    if (!result) return
+    const [p1, p2] = result.players || []
+    const text = `⌨️ Keyboard Battle 결과!\n\n주제: "${topic}"\n\n${p1}: ${result.player1Score ?? 50}점 vs ${p2}: ${result.player2Score ?? 50}점\n🏆 승자: ${result.winner}\n\n⚖️ AI 판정: ${result.comment}`
+
+    if (navigator.share) {
+      navigator.share({ title: 'Keyboard Battle 결과', text }).catch(() => {})
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 3000)
+      })
+    }
   }
 
   if (!result) return null
@@ -78,7 +101,7 @@ export default function Result() {
           <p className="text-gray-200 text-sm leading-relaxed">{result.comment}</p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-4">
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">배틀 기록</p>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {result.messages?.map((msg, i) => (
@@ -95,6 +118,13 @@ export default function Result() {
             ))}
           </div>
         </div>
+
+        <button
+          onClick={handleShare}
+          className="w-full border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white font-bold py-3 rounded-xl text-sm transition mb-3"
+        >
+          {copied ? '복사됨! ✓' : '결과 공유하기 📤'}
+        </button>
 
         <button
           onClick={handleRematch}

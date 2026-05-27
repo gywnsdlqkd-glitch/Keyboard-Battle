@@ -132,4 +132,34 @@ export function removePlayerFromRoom(socketId) {
   return room
 }
 
+export function markPlayerDisconnected(socketId) {
+  const room = getRoomBySocketId(socketId)
+  if (!room || room.state !== 'battling') return null
+
+  if (room.timer) {
+    clearTimeout(room.timer)
+    room.timer = null
+  }
+
+  const player = room.players.find(p => p.id === socketId)
+  if (player) player.disconnected = true
+
+  return room
+}
+
+export function rejoinRoom(roomId, newSocketId, nickname) {
+  const room = rooms.get(roomId)
+  if (!room) return { error: '방을 찾을 수 없습니다.' }
+  if (room.state !== 'battling' && room.state !== 'judging') return { error: '진행 중이 아닌 게임입니다.' }
+
+  const player = room.players.find(p => p.nickname === nickname && p.disconnected)
+  if (!player) return { error: '재접속할 수 없습니다.' }
+
+  const oldSocketId = player.id
+  player.id = newSocketId
+  player.disconnected = false
+
+  return { room, playerIndex: room.players.indexOf(player), oldSocketId }
+}
+
 export { TURN_DURATION_MS, TURNS_PER_PLAYER }

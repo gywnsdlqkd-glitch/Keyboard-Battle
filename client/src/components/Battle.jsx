@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
+import { sounds } from '../utils/sounds'
 
 const TURN_DURATION = 30
 
@@ -19,15 +20,20 @@ export default function Battle() {
   const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
   const [isJudging, setIsJudging] = useState(false)
   const [timeoutMsg, setTimeoutMsg] = useState('')
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false)
+  const [isOpponentTyping, setIsOpponentTyping] = useState(false)
 
   const timerRef = useRef(null)
+  const typingTimeoutRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const prevTimeLeft = useRef(TURN_DURATION)
 
   const isMyTurn = currentNickname === nickname
 
   function resetTimer() {
     if (timerRef.current) clearInterval(timerRef.current)
     setTimeLeft(TURN_DURATION)
+    prevTimeLeft.current = TURN_DURATION
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -41,6 +47,7 @@ export default function Battle() {
 
   const socket = useSocket({
     'game-start': ({ players, currentTurnIndex, currentNickname, turnCount }) => {
+      sessionStorage.setItem('battleSession', JSON.stringify({ roomId, nickname }))
       setPlayers(players)
       setCurrentTurnIndex(currentTurnIndex)
       setCurrentNickname(currentNickname)
@@ -56,9 +63,11 @@ export default function Battle() {
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
       setTimeoutMsg('')
+      setIsOpponentTyping(false)
       if (serverMessages?.length) {
         setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
       }
+      sounds.turnChange()
       resetTimer()
     },
     'turn-timeout': ({ nickname: timedOutNick }) => {
@@ -69,16 +78,63 @@ export default function Battle() {
       setIsJudging(true)
     },
     'game-result': (result) => {
+      sessionStorage.removeItem('battleSession')
       sessionStorage.setItem('gameResult', JSON.stringify(result))
       navigate(`/result/${roomId}`)
     },
     'opponent-left': () => {
+      sessionStorage.removeItem('battleSession')
       alert('상대방이 나갔습니다.')
       navigate('/')
+    },
+    'opponent-disconnected': () => {
+      setOpponentDisconnected(true)
+    },
+    'opponent-reconnected': () => {
+      setOpponentDisconnected(false)
+    },
+    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount }) => {
+      setPlayers(players)
+      setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
+      setCurrentTurnIndex(currentTurnIndex)
+      setCurrentNickname(currentNickname)
+      setTurnCount(turnCount)
+      resetTimer()
+    },
+    'rejoin-error': ({ message }) => {
+      sessionStorage.removeItem('battleSession')
+      alert(`재접속 실패: ${message}`)
+      navigate('/')
+    },
+    'typing-indicator': () => {
+      setIsOpponentTyping(true)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = setTimeout(() => setIsOpponentTyping(false), 2000)
     },
   })
 
   useEffect(() => {
+    const battleSession = sessionStorage.getItem('battleSession')
+
+    if (battleSession) {
+      try {
+        const session = JSON.parse(battleSession)
+        if (session.roomId === roomId && session.nickname === nickname) {
+          socket.emit('rejoin-room', { roomId, nickname })
+          const stored = sessionStorage.getItem('gameData')
+          if (stored) {
+            const data = JSON.parse(stored)
+            setPlayers(data.players || [])
+            setCurrentTurnIndex(data.currentTurnIndex ?? 0)
+            setCurrentNickname(data.currentNickname || '')
+            setTurnCount(data.turnCount ?? 0)
+            resetTimer()
+          }
+          return
+        }
+      } catch (_) {}
+    }
+
     const stored = sessionStorage.getItem('gameData')
     if (stored) {
       const data = JSON.parse(stored)
@@ -93,8 +149,15 @@ export default function Battle() {
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (timeLeft === 10) sounds.timerWarning()
+    else if (timeLeft <= 5 && timeLeft > 0 && prevTimeLeft.current > timeLeft) sounds.timerCritical()
+    prevTimeLeft.current = timeLeft
+  }, [timeLeft])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -106,7 +169,13 @@ export default function Battle() {
     const text = input.trim()
     setMessages(prev => [...prev, { nickname, text, playerIndex: currentTurnIndex }])
     socket.emit('send-message', { text })
+    sounds.messageSent()
     setInput('')
+  }
+
+  function handleInputChange(e) {
+    setInput(e.target.value)
+    if (isMyTurn) socket.emit('typing')
   }
 
   const totalTurns = 10
@@ -168,6 +237,12 @@ export default function Battle() {
         </div>
       </div>
 
+      {opponentDisconnected && (
+        <div className="bg-orange-900/30 border border-orange-700 rounded-lg px-3 py-2 mb-3 text-orange-300 text-sm text-center animate-pulse">
+          ⚡ 상대방 연결 끊김 — 15초 안에 돌아오지 않으면 게임 종료
+        </div>
+      )}
+
       {timeoutMsg && (
         <div className="bg-red-900/30 border border-red-700 rounded-lg px-3 py-2 mb-3 text-red-300 text-sm text-center">
           {timeoutMsg}
@@ -200,6 +275,11 @@ export default function Battle() {
                 </div>
               )
             })}
+            {isOpponentTyping && !isMyTurn && (
+              <div className="flex justify-start">
+                <p className="text-xs text-gray-500 px-2 animate-pulse">✍️ 상대방 입력 중...</p>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -211,7 +291,7 @@ export default function Battle() {
             className="flex-1 bg-gray-800 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none disabled:opacity-40"
             placeholder={isMyTurn ? '킹받게 쳐봐... 💬' : '상대방 턴입니다'}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={handleInputChange}
             disabled={!isMyTurn || isJudging}
             maxLength={200}
             inputMode="text"
