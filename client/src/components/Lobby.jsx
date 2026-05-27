@@ -58,7 +58,7 @@ export default function Lobby() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <h1 className="text-5xl font-black text-center mb-2 text-yellow-400 tracking-tight">
+        <h1 className="text-5xl font-black text-center mb-2 text-yellow-400 tracking-tight whitespace-nowrap">
           ⌨️ Keyboard Battle
         </h1>
         <p className="text-center text-gray-400 mb-10 text-sm">
