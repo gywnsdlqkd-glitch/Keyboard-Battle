@@ -76,7 +76,7 @@ export default function Lobby() {
         <p className="text-center text-gray-400 mb-2 text-sm">
           누가 더 킹받게 쳤나? AI가 판정한다
         </p>
-        <p className="text-center text-gray-600 mb-8 text-xs">v1.2</p>
+        <p className="text-center text-gray-600 mb-8 text-xs">v{__APP_VERSION__}</p>
 
         <div className="bg-gray-900 rounded-2xl p-6 shadow-xl border border-gray-800">
           <div className="mb-5">
