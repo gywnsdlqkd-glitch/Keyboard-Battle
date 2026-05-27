@@ -20,6 +20,8 @@ import {
   rejoinRoom,
   addSpectator,
   removeSpectatorFromRoom,
+  saveResult,
+  getResult,
   TURN_DURATION_MS,
 } from './gameManager.js'
 import { judge } from './aiJudge.js'
@@ -40,6 +42,12 @@ const io = new Server(httpServer, {
 const pendingDisconnects = new Map()
 
 app.get('/health', (_, res) => res.json({ ok: true }))
+
+app.get('/api/result/:roomId', (req, res) => {
+  const result = getResult(req.params.roomId)
+  if (!result) return res.status(404).json({ error: '결과를 찾을 수 없습니다.' })
+  res.json(result)
+})
 
 function startTurnTimer(room) {
   if (room.timer) clearTimeout(room.timer)
@@ -75,7 +83,9 @@ async function handleTurnEnd(room, isTimeout = false) {
       player2Score: judgment.player2Score,
       players: room.players.map(p => p.nickname),
       messages: room.messages,
+      topic: room.topic,
     }
+    saveResult(room.id, resultPayload)
     room.lastResult = resultPayload
     room.state = 'done'
     io.to(room.id).emit('game-result', resultPayload)

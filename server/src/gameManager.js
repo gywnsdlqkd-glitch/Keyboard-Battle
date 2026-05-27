@@ -4,6 +4,15 @@ const TURNS_PER_PLAYER = 5
 const TURN_DURATION_MS = 30000
 
 const rooms = new Map()
+const results = new Map()
+
+export function saveResult(roomId, result) {
+  results.set(roomId, result)
+}
+
+export function getResult(roomId) {
+  return results.get(roomId) || null
+}
 
 export function createRoom(hostSocketId, nickname, topic) {
   const roomId = uuidv4().slice(0, 6).toUpperCase()

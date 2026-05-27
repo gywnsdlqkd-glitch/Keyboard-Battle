@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
-import { TOPIC_CATEGORIES, getRandomTopic } from '../data/topics'
+import { getRandomTopic } from '../data/topics'
 
 export default function Lobby() {
   const navigate = useNavigate()
   const [nickname, setNickname] = useState(sessionStorage.getItem('nickname') || '')
   const [topic, setTopic] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState(null)
   const [roomId, setRoomId] = useState('')
   const [roomList, setRoomList] = useState([])
   const [battlingRooms, setBattlingRooms] = useState([])
@@ -66,12 +65,6 @@ export default function Lobby() {
     socket.emit('join-room', { nickname: nickname.trim(), roomId: id })
   }
 
-  function handleCategoryClick(categoryLabel) {
-    setSelectedCategory(categoryLabel)
-    const picked = getRandomTopic(categoryLabel)
-    if (picked) setTopic(picked)
-  }
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
@@ -117,25 +110,16 @@ export default function Lobby() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 transition"
                   placeholder="예: 짜장면 vs 짬뽕"
                   value={topic}
-                  onChange={e => { setTopic(e.target.value); setSelectedCategory(null) }}
+                  onChange={e => setTopic(e.target.value)}
                   maxLength={50}
                 />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {TOPIC_CATEGORIES.map(cat => (
-                    <button
-                      key={cat.label}
-                      type="button"
-                      onClick={() => handleCategoryClick(cat.label)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition ${
-                        selectedCategory === cat.label
-                          ? 'bg-yellow-400 text-black border-yellow-400 font-bold'
-                          : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setTopic(getRandomTopic('🎲 랜덤'))}
+                  className="mt-2 w-full text-xs py-2 rounded-lg border border-gray-700 bg-gray-800 text-gray-400 hover:border-yellow-400 hover:text-yellow-400 transition"
+                >
+                  🎲 랜덤 주제 뽑기
+                </button>
               </div>
               <button
                 type="submit"
