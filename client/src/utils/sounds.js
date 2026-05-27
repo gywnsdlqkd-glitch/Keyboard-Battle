@@ -31,4 +31,11 @@ export const sounds = {
     tone(440, 0.25)
     setTimeout(() => tone(330, 0.4), 220)
   },
+  dice: () => {
+    for (let i = 0; i < 6; i++) {
+      const freq = 150 + Math.random() * 200
+      setTimeout(() => tone(freq, 0.04, 'square', 0.15), i * 45)
+    }
+    setTimeout(() => tone(350, 0.1, 'square', 0.2), 290)
+  },
 }

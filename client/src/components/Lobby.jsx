@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { getRandomTopic } from '../data/topics'
+import { sounds } from '../utils/sounds'
 
 export default function Lobby() {
   const navigate = useNavigate()
@@ -18,6 +19,7 @@ export default function Lobby() {
       localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
+      sessionStorage.removeItem('opponent')
       navigate(`/room/${roomId}`)
     },
     'room-joined': ({ roomId, topic, nickname, opponent }) => {
@@ -118,7 +120,7 @@ export default function Lobby() {
                 />
                 <button
                   type="button"
-                  onClick={() => setTopic(getRandomTopic('🎲 랜덤'))}
+                  onClick={() => { setTopic(getRandomTopic('🎲 랜덤')); sounds.dice() }}
                   className="mt-2 w-full text-xs py-2 rounded-lg border border-gray-700 bg-gray-800 text-gray-400 hover:border-yellow-400 hover:text-yellow-400 transition"
                 >
                   🎲 랜덤 주제 뽑기
