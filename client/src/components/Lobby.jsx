@@ -30,6 +30,15 @@ export default function Lobby() {
   })
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const inviteRoom = params.get('room')
+    if (inviteRoom) {
+      setRoomId(inviteRoom.toUpperCase())
+      setTab('join')
+    }
+  }, [])
+
+  useEffect(() => {
     socket.emit('get-room-list')
   }, [socket])
 

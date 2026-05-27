@@ -32,6 +32,10 @@ export default function Room() {
     navigator.clipboard.writeText(roomId)
   }
 
+  function copyLink() {
+    navigator.clipboard.writeText(`${window.location.origin}/?room=${roomId}`)
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
@@ -43,7 +47,7 @@ export default function Room() {
           <p className="text-xl font-bold text-white mb-5">"{topic}"</p>
 
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">방 코드</p>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2 mb-3">
             <span className="text-3xl font-black text-yellow-400 tracking-widest">{roomId}</span>
             <button
               onClick={copyCode}
@@ -52,6 +56,12 @@ export default function Room() {
               복사
             </button>
           </div>
+          <button
+            onClick={copyLink}
+            className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-2 rounded-lg text-sm transition"
+          >
+            🔗 초대 링크 복사
+          </button>
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
