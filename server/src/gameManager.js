@@ -172,14 +172,4 @@ export function rejoinRoom(roomId, newSocketId, nickname) {
   return { room, playerIndex: room.players.indexOf(player), oldSocketId }
 }
 
-export function resetRoomForRematch(roomId) {
-  const room = rooms.get(roomId)
-  if (!room || room.state !== 'done') return null
-  room.messages = []
-  room.turnCount = 0
-  room.currentTurnIndex = 0
-  if (room.timer) { clearTimeout(room.timer); room.timer = null }
-  return room
-}
-
 export { TURN_DURATION_MS, TURNS_PER_PLAYER }

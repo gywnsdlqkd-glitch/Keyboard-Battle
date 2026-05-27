@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { sounds } from '../utils/sounds'
-import { useSocket, getSocket } from '../hooks/useSocket'
 
 export default function Result() {
   const { roomId } = useParams()
@@ -10,26 +9,7 @@ export default function Result() {
 
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
-  const [rematchSent, setRematchSent] = useState(false)
-  const [rematchPending, setRematchPending] = useState(false)
   const [displayedComment, setDisplayedComment] = useState('')
-
-  useSocket({
-    'rematch-requested': () => setRematchPending(true),
-    'rematch-declined': () => {
-      setRematchSent(false)
-      setRematchPending(false)
-      alert('상대방이 재경기를 거절했습니다.')
-    },
-    'rematch-start': (gameData) => {
-      sessionStorage.removeItem('gameResult')
-      sessionStorage.removeItem('gameData')
-      sessionStorage.setItem('gameData', JSON.stringify(gameData))
-      sessionStorage.setItem('battleSession', JSON.stringify({ roomId, nickname }))
-      navigate(`/battle/${roomId}`)
-    },
-    'countdown': () => {},
-  })
 
   useEffect(() => {
     const stored = sessionStorage.getItem('gameResult')
@@ -45,6 +25,8 @@ export default function Result() {
 
   useEffect(() => {
     if (!result) return
+    const isSpectator = result.players && !result.players.includes(nickname)
+    if (isSpectator) return
     const p1Score = result.player1Score ?? 50
     const p2Score = result.player2Score ?? 50
     const isDraw = p1Score === p2Score
@@ -64,7 +46,7 @@ export default function Result() {
     return () => clearInterval(interval)
   }, [result])
 
-  function handleRematch() {
+  function handleBack() {
     sessionStorage.removeItem('gameResult')
     sessionStorage.removeItem('gameData')
     sessionStorage.removeItem('battleSession')
@@ -78,32 +60,18 @@ export default function Result() {
     })
   }
 
-  function handleRematchRequest() {
-    getSocket().emit('rematch-request')
-    setRematchSent(true)
-  }
-
-  function handleRematchAccept() {
-    getSocket().emit('rematch-accept')
-    setRematchPending(false)
-  }
-
-  function handleRematchDecline() {
-    getSocket().emit('rematch-decline')
-    setRematchPending(false)
-  }
-
   if (!result) return null
 
   const [p1, p2] = result.players || []
   const p1Score = result.player1Score ?? 50
   const p2Score = result.player2Score ?? 50
   const isDraw = p1Score === p2Score
-  const isWinner = !isDraw && result.winner === nickname
+  const isSpectator = result.players && !result.players.includes(nickname)
+  const isWinner = !isSpectator && !isDraw && result.winner === nickname
 
-  const emoji = isDraw ? '🤝' : isWinner ? '🏆' : '💀'
-  const resultText = isDraw ? '무승부!' : isWinner ? '승리!' : '패배...'
-  const resultColor = isDraw ? 'text-blue-400' : isWinner ? 'text-yellow-400' : 'text-gray-400'
+  const emoji = isSpectator ? '👁' : (isDraw ? '🤝' : isWinner ? '🏆' : '💀')
+  const resultText = isSpectator ? '배틀 종료!' : (isDraw ? '무승부!' : isWinner ? '승리!' : '패배...')
+  const resultColor = isSpectator ? 'text-blue-400' : (isDraw ? 'text-blue-400' : isWinner ? 'text-yellow-400' : 'text-gray-400')
   const isTyping = displayedComment.length < (result.comment?.length ?? 0)
 
   return (
@@ -157,48 +125,23 @@ export default function Result() {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-4">
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">배틀 기록</p>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {result.messages?.map((msg, i) => (
-              <div key={i} className={`flex ${msg.nickname === nickname ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-xl px-3 py-1.5 text-xs ${
-                  msg.nickname === nickname
-                    ? 'bg-yellow-400/20 text-yellow-200'
-                    : 'bg-gray-800 text-gray-300'
-                }`}>
-                  <span className="font-bold mr-1 opacity-70">{msg.nickname}:</span>
-                  {msg.text}
+            {result.messages?.map((msg, i) => {
+              const isMine = isSpectator ? msg.playerIndex === 0 : msg.nickname === nickname
+              return (
+                <div key={i} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`max-w-[80%] rounded-xl px-3 py-1.5 text-xs ${
+                    isMine
+                      ? 'bg-gray-800 text-gray-300'
+                      : 'bg-yellow-400/20 text-yellow-200'
+                  }`}>
+                    <span className="font-bold mr-1 opacity-70">{msg.nickname}:</span>
+                    {msg.text}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
-
-        {rematchPending ? (
-          <div className="bg-gray-900 border border-yellow-500/50 rounded-2xl p-4 mb-3 text-center">
-            <p className="text-yellow-400 font-bold mb-3">상대방이 재경기를 요청했습니다!</p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleRematchAccept}
-                className="flex-1 bg-yellow-400 hover:bg-yellow-300 text-black font-black py-2.5 rounded-xl text-sm transition"
-              >
-                수락 🔄
-              </button>
-              <button
-                onClick={handleRematchDecline}
-                className="flex-1 border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white font-bold py-2.5 rounded-xl text-sm transition"
-              >
-                거절
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={handleRematchRequest}
-            disabled={rematchSent}
-            className="w-full border border-yellow-500/50 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 font-bold py-3 rounded-xl text-sm transition mb-3 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {rematchSent ? '재경기 요청 중... ⏳' : '상대방과 다시 하기 🔄'}
-          </button>
-        )}
 
         <button
           onClick={handleShare}
@@ -208,10 +151,10 @@ export default function Result() {
         </button>
 
         <button
-          onClick={handleRematch}
+          onClick={handleBack}
           className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-xl text-lg transition"
         >
-          다시 배틀하기 🔥
+          {isSpectator ? '로비로 돌아가기' : '다시 배틀하기 🔥'}
         </button>
       </div>
     </div>
