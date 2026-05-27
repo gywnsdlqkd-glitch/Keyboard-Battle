@@ -56,6 +56,9 @@ export default function Battle() {
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
       setTimeoutMsg('')
+      if (serverMessages?.length) {
+        setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
+      }
       resetTimer()
     },
     'turn-timeout': ({ nickname: timedOutNick }) => {
@@ -132,7 +135,7 @@ export default function Battle() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto px-2 py-4">
+    <div className="min-h-[100dvh] flex flex-col max-w-lg mx-auto px-2 py-4">
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 mb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -171,7 +174,7 @@ export default function Battle() {
         </div>
       )}
 
-      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100vh-320px)]">
+      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100dvh-320px)]">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-gray-600 text-sm">
@@ -211,7 +214,8 @@ export default function Battle() {
             onChange={e => setInput(e.target.value)}
             disabled={!isMyTurn || isJudging}
             maxLength={200}
-            autoFocus={isMyTurn}
+            inputMode="text"
+            enterKeyHint="send"
           />
           <button
             type="submit"
