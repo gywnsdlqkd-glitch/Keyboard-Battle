@@ -7,6 +7,7 @@ export default function Room() {
   const navigate = useNavigate()
   const nickname = sessionStorage.getItem('nickname')
   const topic = sessionStorage.getItem('topic')
+  const isHost = sessionStorage.getItem('isHost') === 'true'
   const [opponent, setOpponent] = useState(sessionStorage.getItem('opponent') || null)
   const [countdown, setCountdown] = useState(null)
 
@@ -69,31 +70,51 @@ export default function Room() {
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-black font-black text-xs">
-              {nickname?.charAt(0)?.toUpperCase()}
-            </div>
-            <span className="font-bold text-white">{nickname}</span>
-            <span className="ml-auto text-xs text-yellow-400 font-bold">방장</span>
-          </div>
-
-          <div className="border-t border-gray-800" />
-
-          {opponent ? (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-red-400 flex items-center justify-center text-black font-black text-xs">
-                {opponent.charAt(0).toUpperCase()}
+          {isHost ? (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-black font-black text-xs">
+                  {nickname?.charAt(0)?.toUpperCase()}
+                </div>
+                <span className="font-bold text-white">{nickname}</span>
+                <span className="ml-auto text-xs text-yellow-400 font-bold">방장</span>
               </div>
-              <span className="font-bold text-white">{opponent}</span>
-              <span className="ml-auto text-xs text-green-400 font-bold">입장 완료</span>
-            </div>
+              <div className="border-t border-gray-800" />
+              {opponent ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-red-400 flex items-center justify-center text-black font-black text-xs">
+                    {opponent.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-bold text-white">{opponent}</span>
+                  <span className="ml-auto text-xs text-green-400 font-bold">입장 완료</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-500 animate-pulse" />
+                  </div>
+                  <span className="text-gray-500">상대방 대기 중...</span>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-gray-500 animate-pulse" />
+            <>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-black font-black text-xs">
+                  {opponent?.charAt(0)?.toUpperCase()}
+                </div>
+                <span className="font-bold text-white">{opponent}</span>
+                <span className="ml-auto text-xs text-yellow-400 font-bold">방장</span>
               </div>
-              <span className="text-gray-500">상대방 대기 중...</span>
-            </div>
+              <div className="border-t border-gray-800" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-400 flex items-center justify-center text-black font-black text-xs">
+                  {nickname?.charAt(0)?.toUpperCase()}
+                </div>
+                <span className="font-bold text-white">{nickname}</span>
+                <span className="ml-auto text-xs text-green-400 font-bold">입장 완료</span>
+              </div>
+            </>
           )}
         </div>
 

@@ -19,6 +19,7 @@ export default function Lobby() {
       localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
+      sessionStorage.setItem('isHost', 'true')
       sessionStorage.removeItem('opponent')
       navigate(`/room/${roomId}`)
     },
@@ -26,6 +27,7 @@ export default function Lobby() {
       localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
+      sessionStorage.setItem('isHost', 'false')
       sessionStorage.setItem('opponent', opponent)
       navigate(`/room/${roomId}`)
     },
