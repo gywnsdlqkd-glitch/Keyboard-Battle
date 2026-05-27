@@ -81,7 +81,7 @@ export default function Battle() {
     'game-result': (result) => {
       sessionStorage.removeItem('battleSession')
       sessionStorage.setItem('gameResult', JSON.stringify(result))
-      navigate(`/result/${roomId}`)
+      navigate(`/result/${roomId}`, { replace: true })
     },
     'opponent-left': () => {
       sessionStorage.removeItem('battleSession')
@@ -115,6 +115,11 @@ export default function Battle() {
   })
 
   useEffect(() => {
+    if (sessionStorage.getItem('gameResult')) {
+      navigate(`/result/${roomId}`, { replace: true })
+      return
+    }
+
     const battleSession = sessionStorage.getItem('battleSession')
 
     if (battleSession) {
