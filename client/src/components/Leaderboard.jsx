@@ -1,0 +1,99 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { db } from '../firebase'
+
+export default function Leaderboard() {
+  const navigate = useNavigate()
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const q = query(collection(db, 'users'), orderBy('wins', 'desc'), limit(50))
+    getDocs(q)
+      .then(snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg">
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => navigate('/')}
+            className="text-gray-400 hover:text-white text-sm transition"
+          >
+            ← 로비로
+          </button>
+          <h1 className="text-2xl font-black text-yellow-400">🏆 랭킹보드</h1>
+          <div className="w-16" />
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="flex gap-1">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-2 h-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </div>
+            </div>
+          ) : users.length === 0 ? (
+            <p className="text-center text-gray-500 py-12">아직 전적이 없습니다.</p>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-800">
+                  <th className="text-xs text-gray-500 font-bold px-4 py-3 text-left w-10">#</th>
+                  <th className="text-xs text-gray-500 font-bold px-2 py-3 text-left">닉네임</th>
+                  <th className="text-xs text-gray-500 font-bold px-2 py-3 text-center">승</th>
+                  <th className="text-xs text-gray-500 font-bold px-2 py-3 text-center">패</th>
+                  <th className="text-xs text-gray-500 font-bold px-2 py-3 text-center">무</th>
+                  <th className="text-xs text-gray-500 font-bold px-4 py-3 text-center">승률</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, i) => {
+                  const wins = u.wins ?? 0
+                  const losses = u.losses ?? 0
+                  const draws = u.draws ?? 0
+                  const total = u.totalGames ?? wins + losses + draws
+                  const winRate = total > 0 ? Math.round((wins / total) * 100) : 0
+                  const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                  return (
+                    <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
+                      <td className="px-4 py-3 text-center">
+                        {rankEmoji ? (
+                          <span className="text-lg">{rankEmoji}</span>
+                        ) : (
+                          <span className="text-sm text-gray-500">{i + 1}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-3">
+                        <div className="flex items-center gap-2">
+                          {u.photoURL ? (
+                            <img src={u.photoURL} alt="" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center text-black font-black text-xs">
+                              {u.nickname?.charAt(0)?.toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-sm font-bold text-white truncate max-w-[120px]">{u.nickname}</span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-3 text-center text-sm font-bold text-yellow-400">{wins}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-400">{losses}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-500">{draws}</td>
+                      <td className="px-4 py-3 text-center text-sm font-bold text-white">{winRate}%</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

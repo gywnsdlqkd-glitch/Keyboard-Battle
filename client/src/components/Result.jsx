@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { doc, setDoc, increment } from 'firebase/firestore'
 import { sounds } from '../utils/sounds'
+import { useAuth } from '../contexts/AuthContext'
+import { db } from '../firebase'
 
 export default function Result() {
   const { roomId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const nickname = sessionStorage.getItem('nickname')
+  const statsWritten = useRef(false)
 
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -34,6 +39,30 @@ export default function Result() {
     if (result.winner === nickname) sounds.win()
     else sounds.lose()
   }, [result, nickname])
+
+  useEffect(() => {
+    if (!result || !user || statsWritten.current) return
+    const isSpectator = result.players && !result.players.includes(nickname)
+    if (isSpectator) return
+    statsWritten.current = true
+
+    const p1Score = result.player1Score ?? 50
+    const p2Score = result.player2Score ?? 50
+    const isDraw = p1Score === p2Score
+    const isWinner = !isDraw && result.winner === nickname
+
+    const ref = doc(db, 'users', user.uid)
+    const updates = {
+      nickname,
+      photoURL: user.photoURL || '',
+      totalGames: increment(1),
+    }
+    if (isWinner) updates.wins = increment(1)
+    else if (isDraw) updates.draws = increment(1)
+    else updates.losses = increment(1)
+
+    setDoc(ref, updates, { merge: true }).catch(() => {})
+  }, [result, user, nickname])
 
   useEffect(() => {
     if (!result?.comment) return
