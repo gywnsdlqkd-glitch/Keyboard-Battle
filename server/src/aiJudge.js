@@ -1,11 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+const MODEL = 'gemini-2.5-flash'
+const RETRYABLE_CODES = ['503', '429', '500']
+const MAX_ATTEMPTS = 4
 
-function createModel(modelName) {
+function createModel() {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   return genAI.getGenerativeModel({
-    model: modelName,
+    model: MODEL,
     generationConfig: {
       thinkingConfig: { thinkingBudget: 0 },
       maxOutputTokens: 600,
@@ -35,17 +37,16 @@ ${chatLog}
 JSON으로만 답해:
 {"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"배틀에서 가장 킹받은 메시지 원문 (없으면 빈 문자열)"}`
 
-  for (const modelName of MODELS) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const model = createModel(modelName)
-        return await tryGenerate(model, prompt)
-      } catch (err) {
-        const is503 = err?.message?.includes('503')
-        console.error(`AI 판정 오류 (${modelName}, 시도 ${attempt}):`, err?.message ?? err)
-        if (!is503 || attempt === 2) break
-        await new Promise(r => setTimeout(r, 1500))
-      }
+  const model = createModel()
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await tryGenerate(model, prompt)
+    } catch (err) {
+      const isRetryable = RETRYABLE_CODES.some(code => err?.message?.includes(code))
+      console.error(`AI 판정 오류 (시도 ${attempt}/${MAX_ATTEMPTS}):`, err?.message ?? err)
+      if (!isRetryable || attempt === MAX_ATTEMPTS) break
+      await new Promise(r => setTimeout(r, 2 ** attempt * 1000))
     }
   }
 
