@@ -16,16 +16,17 @@ export function useSocket(eventHandlers) {
   handlersRef.current = eventHandlers
 
   useEffect(() => {
-    const wrappedHandlers = new Map()
+    const handlers = handlersRef.current
+    const entries = Object.entries(handlers)
 
-    Object.keys(handlersRef.current).forEach(event => {
-      const wrapper = (...args) => handlersRef.current[event]?.(...args)
-      wrappedHandlers.set(event, wrapper)
-      socket.on(event, wrapper)
+    entries.forEach(([event, handler]) => {
+      socket.on(event, handler)
     })
 
     return () => {
-      wrappedHandlers.forEach((wrapper, event) => socket.off(event, wrapper))
+      entries.forEach(([event, handler]) => {
+        socket.off(event, handler)
+      })
     }
   }, [socket])
 

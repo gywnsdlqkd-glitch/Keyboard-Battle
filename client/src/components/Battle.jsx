@@ -38,6 +38,7 @@ export default function Battle() {
   const inputRef = useRef(null)
   const prevTimeLeft = useRef(TURN_DURATION)
   const voteTimerRef = useRef(null)
+  const endTurnTimeoutRef = useRef(null)
 
   const isMyTurn = currentTurnIndex === myPlayerIndex
 
@@ -71,6 +72,7 @@ export default function Battle() {
       setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
     },
     'turn-update': ({ currentTurnIndex, currentNickname, turnCount, messages: serverMessages }) => {
+      if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
       setCurrentTurnIndex(currentTurnIndex)
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
@@ -200,6 +202,7 @@ export default function Battle() {
       if (timerRef.current) clearInterval(timerRef.current)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
+      if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
     }
   }, [])
 
@@ -238,6 +241,8 @@ export default function Battle() {
     if (!isMyTurn || isJudging || endTurnPending) return
     setEndTurnPending(true)
     socket.emit('end-turn')
+    if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
+    endTurnTimeoutRef.current = setTimeout(() => setEndTurnPending(false), 5000)
   }
 
   const progress = (turnCount / totalTurns) * 100
