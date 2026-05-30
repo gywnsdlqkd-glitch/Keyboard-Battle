@@ -25,7 +25,7 @@ export default function Spectate() {
 
   // 투표 상태
   const [isVoting, setIsVoting] = useState(false)
-  const [hasVoted, setHasVoted] = useState(false)
+  const [myVote, setMyVote] = useState(null)
   const [voteCount, setVoteCount] = useState([0, 0])
   const [votedProfiles, setVotedProfiles] = useState([[], []])
   const [voteTimeLeft, setVoteTimeLeft] = useState(0)
@@ -49,8 +49,8 @@ export default function Spectate() {
   }
 
   function handleVote(playerIndex) {
-    if (hasVoted || !isVoting) return
-    setHasVoted(true)
+    if (!isVoting) return
+    setMyVote(playerIndex)
     socket.emit('submit-vote', { roomId, playerIndex })
   }
 
@@ -228,29 +228,28 @@ export default function Spectate() {
             </div>
           </div>
 
-          {/* 투표 버튼 (투표 중이고 미투표) */}
+          {/* 투표 버튼 */}
           {isVoting && (
-            hasVoted ? (
-              <p className="text-center text-green-400 font-bold text-sm">✅ 투표 완료!</p>
-            ) : (
-              <>
-                <p className="text-gray-400 text-xs text-center mb-2">누가 더 킹받게 쳤나요?</p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleVote(0)}
-                    className="flex-1 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black py-3 rounded-xl text-sm transition"
-                  >
-                    {players[0]}
-                  </button>
-                  <button
-                    onClick={() => handleVote(1)}
-                    className="flex-1 bg-red-400 hover:bg-red-300 active:scale-95 text-black font-black py-3 rounded-xl text-sm transition"
-                  >
-                    {players[1]}
-                  </button>
-                </div>
-              </>
-            )
+            <>
+              <p className="text-gray-400 text-xs text-center mb-2">누가 더 킹받게 쳤나요?</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleVote(0)}
+                  className={`flex-1 active:scale-95 font-black py-3 rounded-xl text-sm transition ${myVote === 0 ? 'bg-yellow-400 text-black' : 'bg-yellow-400/20 text-yellow-400 hover:bg-yellow-400/40'}`}
+                >
+                  {players[0]}{myVote === 0 && ' ✓'}
+                </button>
+                <button
+                  onClick={() => handleVote(1)}
+                  className={`flex-1 active:scale-95 font-black py-3 rounded-xl text-sm transition ${myVote === 1 ? 'bg-red-400 text-black' : 'bg-red-400/20 text-red-400 hover:bg-red-400/40'}`}
+                >
+                  {players[1]}{myVote === 1 && ' ✓'}
+                </button>
+              </div>
+              {myVote !== null && (
+                <p className="text-gray-500 text-xs text-center mt-2">투표를 변경할 수 있습니다</p>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -121,9 +121,17 @@ async function handleTurnEnd(room, isTimeout = false) {
                       : finalScore1 > finalScore0 ? room.players[1].nickname
                       : judgment.winner
 
-    const voteCommentLine = totalVotes > 0
-      ? `\n\n[관람자 여론] ${room.players[0].nickname} ${voteScore0}% vs ${room.players[1].nickname} ${voteScore1}% (총 ${totalVotes}표)`
-      : '\n\n[관람자 여론] 투표 참여 없음'
+    let voteCommentLine
+    if (totalVotes === 0) {
+      voteCommentLine = '\n\n[관람자 여론] 투표 참여 없음'
+    } else if (voteScore0 === voteScore1) {
+      voteCommentLine = '\n\n[관람자 여론] 관람자 여론이 팽팽하게 갈렸습니다.'
+    } else {
+      const voteWinner = voteScore0 > voteScore1 ? room.players[0].nickname : room.players[1].nickname
+      const winScore = Math.max(voteScore0, voteScore1)
+      const loseScore = Math.min(voteScore0, voteScore1)
+      voteCommentLine = `\n\n[관람자 여론] 관람자들은 ${voteWinner}를 더 지지했습니다. (${winScore}% vs ${loseScore}%)`
+    }
 
     const resultPayload = {
       winner: finalWinner,
@@ -351,8 +359,7 @@ io.on('connection', socket => {
     const isSpectator = room.spectators.some(s => s.id === socket.id)
     if (!isSpectator) return
 
-    if (room.votedSocketIds.has(socket.id)) return
-
+    room.votes = room.votes.filter(v => v.socketId !== socket.id)
     room.votedSocketIds.add(socket.id)
     room.votes.push({ socketId: socket.id, playerIndex })
 
