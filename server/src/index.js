@@ -42,6 +42,9 @@ const io = new Server(httpServer, {
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
 
+const lobbyMessages = []
+const MAX_LOBBY_MESSAGES = 50
+
 // 투표/판정 비중 설정 (합계 1.0)
 const VOTE_DURATION_MS = 15000   // 관람자 투표 창 15초
 const AI_RESULT_WEIGHT = 0.5     // AI 판정 비중 50%
@@ -154,6 +157,15 @@ io.on('connection', socket => {
 
   socket.emit('room-list', getRoomList())
   socket.emit('battling-list', getBattlingRoomList())
+  socket.emit('lobby-chat-history', lobbyMessages)
+
+  socket.on('send-lobby-chat', ({ nickname, text }) => {
+    if (!nickname?.trim() || !text?.trim()) return
+    const msg = { nickname: nickname.trim(), text: text.trim(), timestamp: Date.now() }
+    lobbyMessages.push(msg)
+    if (lobbyMessages.length > MAX_LOBBY_MESSAGES) lobbyMessages.shift()
+    io.emit('lobby-chat', msg)
+  })
 
   socket.on('create-room', ({ nickname, topic }) => {
     if (!nickname?.trim() || !topic?.trim()) return
