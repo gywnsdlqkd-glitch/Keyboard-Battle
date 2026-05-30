@@ -22,7 +22,14 @@ export default function Spectate() {
   const [timeoutMsg, setTimeoutMsg] = useState('')
   const [error, setError] = useState('')
 
+  // 투표 상태
+  const [isVoting, setIsVoting] = useState(false)
+  const [hasVoted, setHasVoted] = useState(false)
+  const [voteCount, setVoteCount] = useState([0, 0])
+  const [voteTimeLeft, setVoteTimeLeft] = useState(0)
+
   const timerRef = useRef(null)
+  const voteTimerRef = useRef(null)
   const messagesEndRef = useRef(null)
 
   function resetTimer() {
@@ -37,6 +44,12 @@ export default function Spectate() {
         return prev - 1
       })
     }, 1000)
+  }
+
+  function handleVote(playerIndex) {
+    if (hasVoted || !isVoting) return
+    setHasVoted(true)
+    socket.emit('submit-vote', { roomId, playerIndex })
   }
 
   const socket = useSocket({
@@ -72,6 +85,26 @@ export default function Spectate() {
       if (timerRef.current) clearInterval(timerRef.current)
       setIsJudging(true)
     },
+    'vote-start': ({ players: votePlayers, duration }) => {
+      setPlayers(votePlayers)
+      setIsVoting(true)
+      setVoteTimeLeft(Math.ceil(duration / 1000))
+      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
+      voteTimerRef.current = setInterval(() => {
+        setVoteTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(voteTimerRef.current)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    },
+    'vote-update': ({ voteCount: vc }) => setVoteCount(vc),
+    'vote-closed': () => {
+      setIsVoting(false)
+      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
+    },
     'game-result': (result) => {
       sessionStorage.setItem('gameResult', JSON.stringify(result))
       navigate(`/result/${roomId}`)
@@ -93,6 +126,7 @@ export default function Spectate() {
     })
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
+      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
     }
   }, [])
 
@@ -119,12 +153,12 @@ export default function Spectate() {
 
   if (isJudging) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-bounce">⚖️</div>
-          <h2 className="text-2xl font-black text-yellow-400 mb-2">AI 판정 중...</h2>
-          <p className="text-gray-400">AI가 배틀 로그를 분석하고 있습니다</p>
-          <div className="flex justify-center gap-1 mt-6">
+          <div className="text-6xl mb-3 animate-bounce">⚖️</div>
+          <h2 className="text-2xl font-black text-yellow-400 mb-1">AI 판정 중...</h2>
+          <p className="text-gray-500 text-sm">AI가 배틀 로그를 분석하고 있습니다</p>
+          <div className="flex justify-center gap-1 mt-4">
             {[0, 1, 2].map(i => (
               <div
                 key={i}
@@ -134,6 +168,45 @@ export default function Spectate() {
             ))}
           </div>
         </div>
+
+        {isVoting ? (
+          <div className="w-full max-w-sm bg-gray-900 border border-blue-500/30 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
+              <span className={`text-sm font-black tabular-nums ${voteTimeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`}>
+                {voteTimeLeft}s
+              </span>
+            </div>
+            {hasVoted ? (
+              <p className="text-center text-green-400 font-bold py-2">✅ 투표 완료!</p>
+            ) : (
+              <>
+                <p className="text-gray-400 text-sm text-center mb-3">누가 더 킹받게 쳤나요?</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleVote(0)}
+                    className="flex-1 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-black py-3 rounded-xl text-sm transition"
+                  >
+                    {players[0]}
+                  </button>
+                  <button
+                    onClick={() => handleVote(1)}
+                    className="flex-1 bg-red-400 hover:bg-red-300 active:scale-95 text-black font-black py-3 rounded-xl text-sm transition"
+                  >
+                    {players[1]}
+                  </button>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between mt-3 text-xs text-gray-600">
+              <span>{voteCount[0]}표</span>
+              <span>총 {voteCount[0] + voteCount[1]}명 투표</span>
+              <span>{voteCount[1]}표</span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">결과를 기다리는 중...</p>
+        )}
       </div>
     )
   }

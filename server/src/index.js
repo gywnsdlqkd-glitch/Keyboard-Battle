@@ -41,6 +41,11 @@ const io = new Server(httpServer, {
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
 
+// 투표/판정 비중 설정 (합계 1.0)
+const VOTE_DURATION_MS = 15000   // 관람자 투표 창 15초
+const AI_RESULT_WEIGHT = 0.5     // AI 판정 비중 50%
+const VOTE_RESULT_WEIGHT = 0.5   // 관람자 투표 비중 50%
+
 app.get('/health', (_, res) => res.json({ ok: true }))
 
 app.get('/api/result/:roomId', (req, res) => {
@@ -74,16 +79,57 @@ async function handleTurnEnd(room, isTimeout = false) {
   if (result.finished) {
     io.to(room.id).emit('game-judging')
 
-    const judgment = await judge(room.topic, room.players, room.messages)
+    // 투표 초기화
+    room.votes = []
+    room.voteOpen = true
+    room.votedSocketIds = new Set()
+
+    io.to(room.id).emit('vote-start', {
+      players: room.players.map(p => p.nickname),
+      duration: VOTE_DURATION_MS,
+    })
+
+    // 투표 마감 타이머 (VOTE_DURATION_MS 후 투표 닫고 vote-closed 브로드캐스트)
+    const closeVotes = new Promise(resolve => {
+      setTimeout(() => {
+        room.voteOpen = false
+        io.to(room.id).emit('vote-closed')
+        resolve()
+      }, VOTE_DURATION_MS)
+    })
+
+    // AI 판정과 투표 병렬 실행 (둘 다 끝날 때까지 대기)
+    const [judgment] = await Promise.all([
+      judge(room.topic, room.players, room.messages),
+      closeVotes,
+    ])
+
+    // 최종 점수 계산
+    const totalVotes = room.votes.length
+    const votesFor0 = room.votes.filter(v => v.playerIndex === 0).length
+    const voteScore0 = totalVotes > 0 ? Math.round((votesFor0 / totalVotes) * 100) : 50
+    const voteScore1 = 100 - voteScore0
+
+    const finalScore0 = Math.round(AI_RESULT_WEIGHT * judgment.player1Score + VOTE_RESULT_WEIGHT * voteScore0)
+    const finalScore1 = Math.round(AI_RESULT_WEIGHT * judgment.player2Score + VOTE_RESULT_WEIGHT * voteScore1)
+    const finalWinner = finalScore0 > finalScore1 ? room.players[0].nickname
+                      : finalScore1 > finalScore0 ? room.players[1].nickname
+                      : judgment.winner
 
     const resultPayload = {
-      winner: judgment.winner,
+      winner: finalWinner,
       comment: judgment.comment,
-      player1Score: judgment.player1Score,
-      player2Score: judgment.player2Score,
+      player1Score: finalScore0,
+      player2Score: finalScore1,
+      aiPlayer1Score: judgment.player1Score,
+      aiPlayer2Score: judgment.player2Score,
+      votePlayer1: voteScore0,
+      votePlayer2: voteScore1,
+      totalVotes,
       players: room.players.map(p => p.nickname),
       messages: room.messages,
       topic: room.topic,
+      bestMessage: judgment.bestMessage,
     }
     saveResult(room.id, resultPayload)
     room.lastResult = resultPayload
@@ -269,6 +315,25 @@ io.on('connection', socket => {
       socket.emit('game-result', room.lastResult)
     }
     console.log(`관람자 입장: ${socket.id} → 방 ${roomId}`)
+  })
+
+  socket.on('submit-vote', ({ roomId, playerIndex }) => {
+    const room = getRoom(roomId)
+    if (!room || !room.voteOpen) return
+
+    const isSpectator = room.spectators.some(s => s.id === socket.id)
+    if (!isSpectator) return
+
+    if (room.votedSocketIds.has(socket.id)) return
+
+    room.votedSocketIds.add(socket.id)
+    room.votes.push({ socketId: socket.id, playerIndex })
+
+    const voteCount = [
+      room.votes.filter(v => v.playerIndex === 0).length,
+      room.votes.filter(v => v.playerIndex === 1).length,
+    ]
+    io.to(room.id).emit('vote-update', { voteCount })
   })
 
   socket.on('disconnect', () => {

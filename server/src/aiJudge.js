@@ -1,6 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const MODEL = 'gemini-2.5-flash'
+
+// 판정 기준 가중치 (합계 100)
+export const JUDGE_WEIGHTS = {
+  LOGIC: 60,      // 논리
+  CREATIVITY: 30, // 창의성
+  HUMOR: 10,      // 유머러스
+}
 const RETRYABLE_CODES = ['503', '429', '500']
 const MAX_ATTEMPTS = 4
 
@@ -29,7 +36,9 @@ export async function judge(topic, players, messages) {
     .map(m => `[${m.nickname}]: ${m.text}`)
     .join('\n')
 
-  const prompt = `키보드 배틀 AI 심판. 누가 더 킹받게(도발적·창의적·유머러스하게) 쳤는지 판정해.
+  const prompt = `키보드 배틀 AI 심판. 아래 배점 기준으로 두 플레이어를 평가하라.
+
+배점 기준: 논리 ${JUDGE_WEIGHTS.LOGIC}%, 창의성 ${JUDGE_WEIGHTS.CREATIVITY}%, 유머러스 ${JUDGE_WEIGHTS.HUMOR}%
 
 주제: "${topic}"
 ${chatLog}
