@@ -75,6 +75,8 @@ export default function Battle() {
       }
       sounds.turnChange()
       resetTimer()
+      const existing = JSON.parse(sessionStorage.getItem('gameData') || '{}')
+      sessionStorage.setItem('gameData', JSON.stringify({ ...existing, currentTurnIndex, currentNickname, turnCount }))
     },
     'turn-timeout': ({ nickname: timedOutNick }) => {
       setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)
@@ -99,7 +101,7 @@ export default function Battle() {
     'opponent-reconnected': () => {
       setOpponentDisconnected(false)
     },
-    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, playerIndex, turnElapsedMs }) => {
+    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, playerIndex, state, turnElapsedMs }) => {
       sessionStorage.setItem('playerIndex', String(playerIndex))
       setMyPlayerIndex(playerIndex)
       setPlayers(players)
@@ -108,8 +110,14 @@ export default function Battle() {
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
       if (tt) setTotalTurns(tt)
-      const elapsed = Math.floor((turnElapsedMs ?? 0) / 1000)
-      resetTimer(Math.max(1, TURN_DURATION - elapsed))
+      sessionStorage.setItem('gameData', JSON.stringify({ players, currentTurnIndex, currentNickname, turnCount }))
+      if (state === 'judging') {
+        if (timerRef.current) clearInterval(timerRef.current)
+        setIsJudging(true)
+      } else {
+        const elapsed = Math.floor((turnElapsedMs ?? 0) / 1000)
+        resetTimer(Math.max(1, TURN_DURATION - elapsed))
+      }
     },
     'rejoin-error': ({ message }) => {
       sessionStorage.removeItem('battleSession')

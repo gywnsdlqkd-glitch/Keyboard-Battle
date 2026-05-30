@@ -263,6 +263,7 @@ io.on('connection', socket => {
       turnCount: room.turnCount,
       totalTurns: TURNS_PER_PLAYER * 2,
       playerIndex,
+      state: room.state,
       turnElapsedMs: room.turnStartedAt ? Date.now() - room.turnStartedAt : 0,
     })
 
