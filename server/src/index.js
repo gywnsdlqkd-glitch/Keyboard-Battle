@@ -61,6 +61,7 @@ app.get('/api/result/:roomId', (req, res) => {
 function startTurnTimer(room) {
   if (room.timer) clearTimeout(room.timer)
 
+  room.turnStartedAt = Date.now()
   room.timer = setTimeout(() => {
     handleTurnEnd(room, true)
   }, TURN_DURATION_MS)
@@ -262,6 +263,7 @@ io.on('connection', socket => {
       turnCount: room.turnCount,
       totalTurns: TURNS_PER_PLAYER * 2,
       playerIndex,
+      turnElapsedMs: room.turnStartedAt ? Date.now() - room.turnStartedAt : 0,
     })
 
     socket.to(room.id).emit('opponent-reconnected', { nickname: nickname.trim() })

@@ -35,10 +35,10 @@ export default function Battle() {
 
   const isMyTurn = currentTurnIndex === myPlayerIndex
 
-  function resetTimer() {
+  function resetTimer(startFrom = TURN_DURATION) {
     if (timerRef.current) clearInterval(timerRef.current)
-    setTimeLeft(TURN_DURATION)
-    prevTimeLeft.current = TURN_DURATION
+    setTimeLeft(startFrom)
+    prevTimeLeft.current = startFrom
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -99,7 +99,7 @@ export default function Battle() {
     'opponent-reconnected': () => {
       setOpponentDisconnected(false)
     },
-    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, playerIndex }) => {
+    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, playerIndex, turnElapsedMs }) => {
       sessionStorage.setItem('playerIndex', String(playerIndex))
       setMyPlayerIndex(playerIndex)
       setPlayers(players)
@@ -108,7 +108,8 @@ export default function Battle() {
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
       if (tt) setTotalTurns(tt)
-      resetTimer()
+      const elapsed = Math.floor((turnElapsedMs ?? 0) / 1000)
+      resetTimer(Math.max(1, TURN_DURATION - elapsed))
     },
     'rejoin-error': ({ message }) => {
       sessionStorage.removeItem('battleSession')

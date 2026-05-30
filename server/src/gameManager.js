@@ -26,6 +26,7 @@ export function createRoom(hostSocketId, nickname, topic) {
     turnCount: 0,
     messages: [],
     timer: null,
+    turnStartedAt: null,
   }
   rooms.set(roomId, room)
   return room
