@@ -104,15 +104,15 @@ export function getBattlingRoomList() {
     }))
 }
 
-export function addSpectator(room, socketId) {
-  if (!room.spectators.includes(socketId)) {
-    room.spectators.push(socketId)
+export function addSpectator(room, socketId, nickname, photoURL) {
+  if (!room.spectators.some(s => s.id === socketId)) {
+    room.spectators.push({ id: socketId, nickname, photoURL })
   }
 }
 
 export function removeSpectatorFromRoom(socketId) {
   for (const room of rooms.values()) {
-    const idx = room.spectators.indexOf(socketId)
+    const idx = room.spectators.findIndex(s => s.id === socketId)
     if (idx !== -1) {
       room.spectators.splice(idx, 1)
       return room

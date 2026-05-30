@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
+import { useAuth } from '../contexts/AuthContext'
 
 const TURN_DURATION = 30
 
 export default function Spectate() {
   const { roomId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [messages, setMessages] = useState([])
+  const [spectators, setSpectators] = useState([])
   const [players, setPlayers] = useState([])
   const [topic, setTopic] = useState('')
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0)
@@ -37,19 +40,21 @@ export default function Spectate() {
   }
 
   const socket = useSocket({
-    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, state }) => {
+    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, state, spectators: initSpectators }) => {
       setPlayers(players)
       setTopic(topic)
       setMessages(messages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
       setCurrentTurnIndex(currentTurnIndex)
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
+      setSpectators(initSpectators || [])
       if (state === 'judging') {
         setIsJudging(true)
       } else {
         resetTimer()
       }
     },
+    'spectator-list': (list) => setSpectators(list),
     'message-added': ({ nickname: sender, text, playerIndex }) => {
       setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
     },
@@ -81,7 +86,11 @@ export default function Spectate() {
   })
 
   useEffect(() => {
-    socket.emit('watch-room', { roomId })
+    socket.emit('watch-room', {
+      roomId,
+      nickname: user?.displayName || '익명',
+      photoURL: user?.photoURL || null,
+    })
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
@@ -213,6 +222,26 @@ export default function Spectate() {
           </div>
         )}
       </div>
+
+      {spectators.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
+          <span className="text-xs text-gray-500">👁 {spectators.length}명 관람 중</span>
+          <div className="flex -space-x-2">
+            {spectators.map((s, i) => (
+              <div
+                key={i}
+                title={s.nickname}
+                className="w-7 h-7 rounded-full border-2 border-gray-900 overflow-hidden bg-gray-700 flex items-center justify-center"
+              >
+                {s.photoURL
+                  ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  : <span className="text-xs text-gray-400">👤</span>
+                }
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 text-center">
         <p className="text-gray-500 text-sm">

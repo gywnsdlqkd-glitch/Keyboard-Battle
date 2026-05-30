@@ -246,13 +246,13 @@ io.on('connection', socket => {
     socket.emit('battling-list', getBattlingRoomList())
   })
 
-  socket.on('watch-room', ({ roomId }) => {
+  socket.on('watch-room', ({ roomId, nickname, photoURL }) => {
     const room = getRoom(roomId)
     if (!room || (room.state !== 'battling' && room.state !== 'judging' && room.state !== 'done')) {
       socket.emit('watch-error', { message: '관람할 수 없는 방입니다.' })
       return
     }
-    addSpectator(room, socket.id)
+    addSpectator(room, socket.id, nickname || '익명', photoURL || null)
     socket.join(room.id)
     socket.emit('spectate-state', {
       players: room.players.map(p => p.nickname),
@@ -262,7 +262,9 @@ io.on('connection', socket => {
       currentNickname: room.players[room.currentTurnIndex]?.nickname,
       turnCount: room.turnCount,
       state: room.state,
+      spectators: room.spectators.map(s => ({ nickname: s.nickname, photoURL: s.photoURL })),
     })
+    io.to(room.id).emit('spectator-list', room.spectators.map(s => ({ nickname: s.nickname, photoURL: s.photoURL })))
     if (room.state === 'done' && room.lastResult) {
       socket.emit('game-result', room.lastResult)
     }
@@ -293,7 +295,10 @@ io.on('connection', socket => {
         io.emit('room-list', getRoomList())
         io.emit('battling-list', getBattlingRoomList())
       } else {
-        removeSpectatorFromRoom(socket.id)
+        const spectateRoom = removeSpectatorFromRoom(socket.id)
+        if (spectateRoom) {
+          io.to(spectateRoom.id).emit('spectator-list', spectateRoom.spectators.map(s => ({ nickname: s.nickname, photoURL: s.photoURL })))
+        }
       }
     }
     console.log('접속 종료:', socket.id)
