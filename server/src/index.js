@@ -121,9 +121,13 @@ async function handleTurnEnd(room, isTimeout = false) {
                       : finalScore1 > finalScore0 ? room.players[1].nickname
                       : judgment.winner
 
+    const voteCommentLine = totalVotes > 0
+      ? `\n\n[관람자 여론] ${room.players[0].nickname} ${voteScore0}% vs ${room.players[1].nickname} ${voteScore1}% (총 ${totalVotes}표)`
+      : '\n\n[관람자 여론] 투표 참여 없음'
+
     const resultPayload = {
       winner: finalWinner,
-      comment: judgment.comment,
+      comment: judgment.comment + voteCommentLine,
       player1Score: finalScore0,
       player2Score: finalScore1,
       aiPlayer1Score: judgment.player1Score,

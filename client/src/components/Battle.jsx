@@ -26,12 +26,17 @@ export default function Battle() {
   const [timeoutMsg, setTimeoutMsg] = useState('')
   const [opponentDisconnected, setOpponentDisconnected] = useState(false)
   const [isOpponentTyping, setIsOpponentTyping] = useState(false)
+  const [voteCount, setVoteCount] = useState([0, 0])
+  const [votedProfiles, setVotedProfiles] = useState([[], []])
+  const [voteTimeLeft, setVoteTimeLeft] = useState(0)
+  const [isVoting, setIsVoting] = useState(false)
 
   const timerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const prevTimeLeft = useRef(TURN_DURATION)
+  const voteTimerRef = useRef(null)
 
   const isMyTurn = currentTurnIndex === myPlayerIndex
 
@@ -84,6 +89,25 @@ export default function Battle() {
     'game-judging': () => {
       if (timerRef.current) clearInterval(timerRef.current)
       setIsJudging(true)
+    },
+    'vote-start': ({ duration }) => {
+      setIsVoting(true)
+      setVoteTimeLeft(Math.ceil(duration / 1000))
+      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
+      voteTimerRef.current = setInterval(() => {
+        setVoteTimeLeft(prev => {
+          if (prev <= 1) { clearInterval(voteTimerRef.current); return 0 }
+          return prev - 1
+        })
+      }, 1000)
+    },
+    'vote-update': ({ voteCount: vc, votedProfiles: vp }) => {
+      setVoteCount(vc)
+      if (vp) setVotedProfiles(vp)
+    },
+    'vote-closed': () => {
+      setIsVoting(false)
+      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
     },
     'game-result': (result) => {
       sessionStorage.removeItem('battleSession')
@@ -173,6 +197,7 @@ export default function Battle() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
     }
   }, [])
 
@@ -216,13 +241,14 @@ export default function Battle() {
   const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
 
   if (isJudging) {
+    const totalVotesNow = voteCount[0] + voteCount[1]
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="text-center">
+        <div className="text-center w-full max-w-sm">
           <div className="text-6xl mb-4 animate-bounce">⚖️</div>
           <h2 className="text-2xl font-black text-yellow-400 mb-2">AI 판정 중...</h2>
-          <p className="text-gray-400">Claude가 배틀 로그를 분석하고 있습니다</p>
-          <div className="flex justify-center gap-1 mt-6">
+          <p className="text-gray-400 mb-6">Gemini가 배틀 로그를 분석하고 있습니다</p>
+          <div className="flex justify-center gap-1 mb-8">
             {[0, 1, 2].map(i => (
               <div
                 key={i}
@@ -230,6 +256,40 @@ export default function Battle() {
                 style={{ animationDelay: `${i * 0.15}s` }}
               />
             ))}
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
+              {isVoting && (
+                <span className={`text-sm font-black ${voteTimeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`}>
+                  {voteTimeLeft}s
+                </span>
+              )}
+            </div>
+
+            <div className="flex gap-3 mb-3">
+              {players.map((p, i) => (
+                <div key={i} className={`flex-1 rounded-xl p-3 border ${i === 0 ? 'border-yellow-400/30' : 'border-red-400/30'}`}>
+                  <p className="text-xs text-gray-400 mb-1 truncate">{p}</p>
+                  <p className={`text-2xl font-black ${i === 0 ? 'text-yellow-400' : 'text-red-400'}`}>{voteCount[i]}표</p>
+                  <div className="flex flex-wrap gap-1 mt-2 min-h-[20px]">
+                    {votedProfiles[i]?.map((profile, j) => (
+                      <div key={j} className="w-5 h-5 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center" title={profile.nickname}>
+                        {profile.photoURL
+                          ? <img src={profile.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          : <span className="text-[8px] text-gray-300">{profile.nickname?.[0]?.toUpperCase()}</span>
+                        }
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {totalVotesNow === 0 && (
+              <p className="text-gray-600 text-xs text-center">아직 투표한 관람자가 없어요</p>
+            )}
           </div>
         </div>
       </div>
