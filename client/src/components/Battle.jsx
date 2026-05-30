@@ -30,6 +30,7 @@ export default function Battle() {
   const [votedProfiles, setVotedProfiles] = useState([[], []])
   const [voteTimeLeft, setVoteTimeLeft] = useState(0)
   const [isVoting, setIsVoting] = useState(false)
+  const [endTurnPending, setEndTurnPending] = useState(false)
 
   const timerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
@@ -75,6 +76,7 @@ export default function Battle() {
       setTurnCount(turnCount)
       setTimeoutMsg('')
       setIsOpponentTyping(false)
+      setEndTurnPending(false)
       if (serverMessages?.length) {
         setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
       }
@@ -233,7 +235,8 @@ export default function Battle() {
   }
 
   function handleEndTurn() {
-    if (!isMyTurn || isJudging) return
+    if (!isMyTurn || isJudging || endTurnPending) return
+    setEndTurnPending(true)
     socket.emit('end-turn')
   }
 
@@ -405,9 +408,10 @@ export default function Battle() {
         <button
           type="button"
           onClick={handleEndTurn}
-          className="w-full mt-2 border border-gray-700 hover:border-yellow-400 text-gray-500 hover:text-yellow-400 font-bold py-2 rounded-lg text-xs transition"
+          disabled={endTurnPending}
+          className={`w-full mt-2 border font-bold py-2 rounded-lg text-xs transition ${endTurnPending ? 'border-gray-800 text-gray-600 cursor-not-allowed' : 'border-gray-700 hover:border-yellow-400 text-gray-500 hover:text-yellow-400'}`}
         >
-          턴 종료 ▶
+          {endTurnPending ? '처리 중...' : '턴 종료 ▶'}
         </button>
       )}
 
