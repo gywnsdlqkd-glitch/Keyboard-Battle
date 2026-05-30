@@ -136,26 +136,6 @@ export default function Result() {
           </div>
         </div>
 
-        {result.totalVotes !== undefined && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 text-center">점수 내역</p>
-            <div className="space-y-1.5 text-xs text-gray-400">
-              <div className="flex justify-between">
-                <span>🤖 AI 판정</span>
-                <span className="tabular-nums">{result.aiPlayer1Score} : {result.aiPlayer2Score}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>🗳️ 관람자 투표 ({result.totalVotes}명)</span>
-                <span className="tabular-nums">{result.votePlayer1} : {result.votePlayer2}</span>
-              </div>
-              <div className="flex justify-between font-bold text-white border-t border-gray-700 pt-2 mt-2">
-                <span>최종 점수</span>
-                <span className="tabular-nums">{p1Score} : {p2Score}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {result.bestMessage && (
           <div className="bg-gray-900 border border-yellow-400/20 rounded-2xl p-4 mb-4">
             <p className="text-xs text-yellow-400 uppercase tracking-wider mb-2">🏅 킹받 최고 명언</p>

@@ -27,6 +27,7 @@ export default function Spectate() {
   const [isVoting, setIsVoting] = useState(false)
   const [hasVoted, setHasVoted] = useState(false)
   const [voteCount, setVoteCount] = useState([0, 0])
+  const [votedProfiles, setVotedProfiles] = useState([[], []])
   const [voteTimeLeft, setVoteTimeLeft] = useState(0)
 
   const timerRef = useRef(null)
@@ -102,7 +103,10 @@ export default function Spectate() {
         })
       }, 1000)
     },
-    'vote-update': ({ voteCount: vc }) => setVoteCount(vc),
+    'vote-update': ({ voteCount: vc, votedProfiles: vp }) => {
+      setVoteCount(vc)
+      if (vp) setVotedProfiles(vp)
+    },
     'vote-closed': () => {
       setIsVoting(false)
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
@@ -171,19 +175,66 @@ export default function Spectate() {
           </div>
         </div>
 
-        {isVoting ? (
-          <div className="w-full max-w-sm bg-gray-900 border border-blue-500/30 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
+        <div className="w-full max-w-sm bg-gray-900 border border-blue-500/30 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
+            {isVoting && (
               <span className={`text-sm font-black tabular-nums ${voteTimeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`}>
                 {voteTimeLeft}s
               </span>
+            )}
+          </div>
+
+          {/* 좌/우 투표 현황 */}
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 text-center">
+              <p className="text-yellow-400 font-bold text-xs mb-2 truncate">{players[0]}</p>
+              <div className="flex flex-wrap justify-center gap-1 min-h-8">
+                {votedProfiles[0].map((p, i) => (
+                  <div
+                    key={i}
+                    title={p.nickname}
+                    className="w-8 h-8 rounded-full border-2 border-yellow-400/40 overflow-hidden bg-gray-700 flex items-center justify-center"
+                  >
+                    {p.photoURL
+                      ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      : <span className="text-xs">👤</span>
+                    }
+                  </div>
+                ))}
+              </div>
+              <p className="text-yellow-400 font-black text-lg mt-2">{voteCount[0]}표</p>
             </div>
-            {hasVoted ? (
-              <p className="text-center text-green-400 font-bold py-2">✅ 투표 완료!</p>
+
+            <div className="w-px bg-gray-700 self-stretch" />
+
+            <div className="flex-1 text-center">
+              <p className="text-red-400 font-bold text-xs mb-2 truncate">{players[1]}</p>
+              <div className="flex flex-wrap justify-center gap-1 min-h-8">
+                {votedProfiles[1].map((p, i) => (
+                  <div
+                    key={i}
+                    title={p.nickname}
+                    className="w-8 h-8 rounded-full border-2 border-red-400/40 overflow-hidden bg-gray-700 flex items-center justify-center"
+                  >
+                    {p.photoURL
+                      ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      : <span className="text-xs">👤</span>
+                    }
+                  </div>
+                ))}
+              </div>
+              <p className="text-red-400 font-black text-lg mt-2">{voteCount[1]}표</p>
+            </div>
+          </div>
+
+          {/* 투표 버튼 (투표 중이고 미투표) */}
+          {isVoting && (
+            hasVoted ? (
+              <p className="text-center text-green-400 font-bold text-sm">✅ 투표 완료!</p>
             ) : (
               <>
-                <p className="text-gray-400 text-sm text-center mb-3">누가 더 킹받게 쳤나요?</p>
+                <p className="text-gray-400 text-xs text-center mb-2">누가 더 킹받게 쳤나요?</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleVote(0)}
@@ -199,16 +250,9 @@ export default function Spectate() {
                   </button>
                 </div>
               </>
-            )}
-            <div className="flex justify-between mt-3 text-xs text-gray-600">
-              <span>{voteCount[0]}표</span>
-              <span>총 {voteCount[0] + voteCount[1]}명 투표</span>
-              <span>{voteCount[1]}표</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-500 text-sm">결과를 기다리는 중...</p>
-        )}
+            )
+          )}
+        </div>
       </div>
     )
   }

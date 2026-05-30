@@ -341,7 +341,16 @@ io.on('connection', socket => {
       room.votes.filter(v => v.playerIndex === 0).length,
       room.votes.filter(v => v.playerIndex === 1).length,
     ]
-    io.to(room.id).emit('vote-update', { voteCount })
+    const votedProfiles = [0, 1].map(pidx =>
+      room.votes
+        .filter(v => v.playerIndex === pidx)
+        .map(v => {
+          const s = room.spectators.find(sp => sp.id === v.socketId)
+          return s ? { nickname: s.nickname, photoURL: s.photoURL } : null
+        })
+        .filter(Boolean)
+    )
+    io.to(room.id).emit('vote-update', { voteCount, votedProfiles })
   })
 
   socket.on('disconnect', () => {
