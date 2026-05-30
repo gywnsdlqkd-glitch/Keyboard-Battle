@@ -159,9 +159,9 @@ io.on('connection', socket => {
   socket.emit('battling-list', getBattlingRoomList())
   socket.emit('lobby-chat-history', lobbyMessages)
 
-  socket.on('send-lobby-chat', ({ nickname, text }) => {
+  socket.on('send-lobby-chat', ({ nickname, text, photoURL }) => {
     if (!nickname?.trim() || !text?.trim()) return
-    const msg = { nickname: nickname.trim(), text: text.trim(), timestamp: Date.now() }
+    const msg = { nickname: nickname.trim(), text: text.trim(), photoURL: photoURL || null, timestamp: Date.now() }
     lobbyMessages.push(msg)
     if (lobbyMessages.length > MAX_LOBBY_MESSAGES) lobbyMessages.shift()
     io.emit('lobby-chat', msg)

@@ -86,7 +86,7 @@ export default function Lobby() {
   function handleChatSend(e) {
     e.preventDefault()
     if (!chatInput.trim() || !nickname.trim()) return
-    socket.emit('send-lobby-chat', { nickname: nickname.trim(), text: chatInput.trim() })
+    socket.emit('send-lobby-chat', { nickname: nickname.trim(), text: chatInput.trim(), photoURL: user?.photoURL || null })
     setChatInput('')
   }
 
@@ -283,11 +283,21 @@ export default function Lobby() {
             )}
             {chatMessages.map((msg, i) => {
               const isMe = msg.nickname === nickname.trim()
+              const photo = isMe ? (user?.photoURL || null) : (msg.photoURL || null)
+              const initial = (isMe ? nickname : msg.nickname).trim()[0]?.toUpperCase() || '?'
               return (
-                <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                  {!isMe && <span className="text-xs text-gray-500 mb-0.5 px-1">{msg.nickname}</span>}
-                  <div className={`max-w-[85%] px-3 py-1.5 rounded-xl text-sm break-all ${isMe ? 'bg-yellow-400 text-black rounded-br-sm' : 'bg-gray-800 text-white rounded-bl-sm'}`}>
-                    {msg.text}
+                <div key={i} className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
+                    {photo
+                      ? <img src={photo} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      : <span className="text-xs font-bold text-gray-300">{initial}</span>
+                    }
+                  </div>
+                  <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                    {!isMe && <span className="text-xs text-gray-500 mb-0.5 px-1">{msg.nickname}</span>}
+                    <div className={`px-3 py-1.5 rounded-xl text-sm break-all ${isMe ? 'bg-yellow-400 text-black rounded-br-sm' : 'bg-gray-800 text-white rounded-bl-sm'}`}>
+                      {msg.text}
+                    </div>
                   </div>
                 </div>
               )
