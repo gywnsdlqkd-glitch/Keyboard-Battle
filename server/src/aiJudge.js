@@ -32,6 +32,16 @@ async function tryGenerate(model, prompt) {
 }
 
 export async function judge(topic, players, messages) {
+  if (messages.length === 0) {
+    return {
+      winner: players[0].nickname,
+      comment: '배틀 기록이 없어 판정할 수 없습니다.',
+      player1Score: 50,
+      player2Score: 50,
+      bestMessage: '',
+    }
+  }
+
   const chatLog = messages
     .map(m => `[${m.nickname}]: ${m.text}`)
     .join('\n')
@@ -41,10 +51,15 @@ export async function judge(topic, players, messages) {
 배점 기준: 논리 ${JUDGE_WEIGHTS.LOGIC}%, 창의성 ${JUDGE_WEIGHTS.CREATIVITY}%, 유머러스 ${JUDGE_WEIGHTS.HUMOR}%
 
 주제: "${topic}"
+채팅 기록:
 ${chatLog}
 
+규칙:
+- bestMessage는 반드시 위 채팅 기록에 있는 메시지 원문 중 하나를 그대로 인용해야 한다.
+- 채팅 기록에 없는 내용은 절대 만들거나 변형하지 않는다.
+
 JSON으로만 답해:
-{"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"배틀에서 가장 킹받은 메시지 원문 (없으면 빈 문자열)"}`
+{"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"채팅 기록 중 실제 메시지 원문, 없으면 빈 문자열"}`
 
   const model = createModel()
 

@@ -138,7 +138,7 @@ export default function Result() {
 
         {result.bestMessage && (
           <div className="bg-gray-900 border border-yellow-400/20 rounded-2xl p-4 mb-4">
-            <p className="text-xs text-yellow-400 uppercase tracking-wider mb-2">🏅 킹받 최고 명언</p>
+            <p className="text-xs text-yellow-400 uppercase tracking-wider mb-2">🏅 베스트 코멘트</p>
             <p className="text-white text-sm font-bold italic">"{result.bestMessage}"</p>
           </div>
         )}
