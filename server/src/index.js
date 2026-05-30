@@ -118,6 +118,7 @@ io.on('connection', socket => {
       roomId: room.id,
       topic: room.topic,
       nickname: nickname.trim(),
+      playerIndex: 0,
     })
 
     io.emit('room-list', getRoomList())
@@ -144,6 +145,7 @@ io.on('connection', socket => {
       topic: room.topic,
       nickname: nickname.trim(),
       opponent: room.players[0].nickname,
+      playerIndex: 1,
     })
 
     io.emit('room-list', getRoomList())

@@ -155,7 +155,8 @@ export default function Result() {
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">배틀 기록</p>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {result.messages?.map((msg, i) => {
-              const isMine = isSpectator ? msg.playerIndex === 0 : msg.nickname === nickname
+              const myIdx = parseInt(sessionStorage.getItem('playerIndex') ?? '0', 10)
+              const isMine = isSpectator ? msg.playerIndex === 0 : msg.playerIndex === myIdx
               return (
                 <div key={i} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
                   <div className={`max-w-[80%] rounded-xl px-3 py-1.5 text-xs ${

@@ -36,8 +36,6 @@ export function joinRoom(roomId, socketId, nickname) {
   if (!room) return { error: '방을 찾을 수 없습니다.' }
   if (room.players.length >= 2) return { error: '방이 꽉 찼습니다.' }
   if (room.state !== 'waiting') return { error: '이미 시작된 게임입니다.' }
-  if (room.players.some(p => p.nickname === nickname)) return { error: '이미 사용 중인 닉네임입니다. 다른 닉네임을 사용하세요.' }
-
   room.players.push({ id: socketId, nickname })
   return { room }
 }

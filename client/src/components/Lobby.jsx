@@ -17,20 +17,22 @@ export default function Lobby() {
   const [error, setError] = useState('')
 
   const socket = useSocket({
-    'room-created': ({ roomId, topic, nickname }) => {
+    'room-created': ({ roomId, topic, nickname, playerIndex }) => {
       localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
       sessionStorage.setItem('isHost', 'true')
+      sessionStorage.setItem('playerIndex', String(playerIndex))
       sessionStorage.removeItem('opponent')
       navigate(`/room/${roomId}`)
     },
-    'room-joined': ({ roomId, topic, nickname, opponent }) => {
+    'room-joined': ({ roomId, topic, nickname, opponent, playerIndex }) => {
       localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
       sessionStorage.setItem('isHost', 'false')
       sessionStorage.setItem('opponent', opponent)
+      sessionStorage.setItem('playerIndex', String(playerIndex))
       navigate(`/room/${roomId}`)
     },
     'room-list': (list) => setRoomList(list),

@@ -10,6 +10,9 @@ export default function Battle() {
   const navigate = useNavigate()
   const nickname = sessionStorage.getItem('nickname')
   const topic = sessionStorage.getItem('topic')
+  const [myPlayerIndex, setMyPlayerIndex] = useState(
+    parseInt(sessionStorage.getItem('playerIndex') ?? '0', 10)
+  )
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -29,7 +32,7 @@ export default function Battle() {
   const inputRef = useRef(null)
   const prevTimeLeft = useRef(TURN_DURATION)
 
-  const isMyTurn = currentNickname === nickname
+  const isMyTurn = currentTurnIndex === myPlayerIndex
 
   function resetTimer() {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -56,7 +59,7 @@ export default function Battle() {
       resetTimer()
     },
     'message-added': ({ nickname: sender, text, playerIndex }) => {
-      if (sender === nickname) return
+      if (playerIndex === myPlayerIndex) return
       setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
     },
     'turn-update': ({ currentTurnIndex, currentNickname, turnCount, messages: serverMessages }) => {
@@ -94,7 +97,9 @@ export default function Battle() {
     'opponent-reconnected': () => {
       setOpponentDisconnected(false)
     },
-    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount }) => {
+    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, playerIndex }) => {
+      sessionStorage.setItem('playerIndex', String(playerIndex))
+      setMyPlayerIndex(playerIndex)
       setPlayers(players)
       setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
       setCurrentTurnIndex(currentTurnIndex)
@@ -271,7 +276,7 @@ export default function Battle() {
         ) : (
           <div className="space-y-2">
             {messages.map((msg, i) => {
-              const isMine = msg.nickname === nickname
+              const isMine = msg.playerIndex === myPlayerIndex
               return (
                 <div key={i} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
