@@ -17,6 +17,7 @@ export default function Spectate() {
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0)
   const [currentNickname, setCurrentNickname] = useState('')
   const [turnCount, setTurnCount] = useState(0)
+  const [totalTurns, setTotalTurns] = useState(4)
   const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
   const [isJudging, setIsJudging] = useState(false)
   const [timeoutMsg, setTimeoutMsg] = useState('')
@@ -53,13 +54,14 @@ export default function Spectate() {
   }
 
   const socket = useSocket({
-    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, state, spectators: initSpectators }) => {
+    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, state, spectators: initSpectators }) => {
       setPlayers(players)
       setTopic(topic)
       setMessages(messages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
       setCurrentTurnIndex(currentTurnIndex)
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
+      if (tt) setTotalTurns(tt)
       setSpectators(initSpectators || [])
       if (state === 'judging') {
         setIsJudging(true)
@@ -211,7 +213,6 @@ export default function Spectate() {
     )
   }
 
-  const totalTurns = 10
   const progress = (turnCount / totalTurns) * 100
   const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
 

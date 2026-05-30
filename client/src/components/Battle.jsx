@@ -20,6 +20,7 @@ export default function Battle() {
   const [currentNickname, setCurrentNickname] = useState('')
   const [players, setPlayers] = useState([])
   const [turnCount, setTurnCount] = useState(0)
+  const [totalTurns, setTotalTurns] = useState(4)
   const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
   const [isJudging, setIsJudging] = useState(false)
   const [timeoutMsg, setTimeoutMsg] = useState('')
@@ -50,12 +51,13 @@ export default function Battle() {
   }
 
   const socket = useSocket({
-    'game-start': ({ players, currentTurnIndex, currentNickname, turnCount }) => {
+    'game-start': ({ players, currentTurnIndex, currentNickname, turnCount, totalTurns: tt }) => {
       sessionStorage.setItem('battleSession', JSON.stringify({ roomId, nickname }))
       setPlayers(players)
       setCurrentTurnIndex(currentTurnIndex)
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
+      if (tt) setTotalTurns(tt)
       resetTimer()
     },
     'message-added': ({ nickname: sender, text, playerIndex }) => {
@@ -97,7 +99,7 @@ export default function Battle() {
     'opponent-reconnected': () => {
       setOpponentDisconnected(false)
     },
-    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, playerIndex }) => {
+    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, playerIndex }) => {
       sessionStorage.setItem('playerIndex', String(playerIndex))
       setMyPlayerIndex(playerIndex)
       setPlayers(players)
@@ -105,6 +107,7 @@ export default function Battle() {
       setCurrentTurnIndex(currentTurnIndex)
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
+      if (tt) setTotalTurns(tt)
       resetTimer()
     },
     'rejoin-error': ({ message }) => {
@@ -195,7 +198,11 @@ export default function Battle() {
     if (isMyTurn) socket.emit('typing')
   }
 
-  const totalTurns = 10
+  function handleEndTurn() {
+    if (!isMyTurn || isJudging) return
+    socket.emit('end-turn')
+  }
+
   const progress = (turnCount / totalTurns) * 100
   const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
 
@@ -324,6 +331,16 @@ export default function Battle() {
           </button>
         </form>
       </div>
+
+      {isMyTurn && !isJudging && (
+        <button
+          type="button"
+          onClick={handleEndTurn}
+          className="w-full mt-2 border border-gray-700 hover:border-yellow-400 text-gray-500 hover:text-yellow-400 font-bold py-2 rounded-lg text-xs transition"
+        >
+          턴 종료 ▶
+        </button>
+      )}
 
       <p className="text-center text-xs text-gray-600 mt-2">
         {isMyTurn ? '⚡ 내 턴 — 킹받게 공격하라!' : '⏳ 상대방의 턴'}

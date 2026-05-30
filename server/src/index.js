@@ -23,6 +23,7 @@ import {
   saveResult,
   getResult,
   TURN_DURATION_MS,
+  TURNS_PER_PLAYER,
 } from './gameManager.js'
 import { judge } from './aiJudge.js'
 
@@ -208,7 +209,7 @@ io.on('connection', socket => {
         currentTurnIndex: 0,
         currentNickname: room.players[0].nickname,
         turnCount: 0,
-        totalTurns: 10,
+        totalTurns: TURNS_PER_PLAYER * 2,
       })
 
       io.emit('room-list', getRoomList())
@@ -247,6 +248,7 @@ io.on('connection', socket => {
       currentTurnIndex: room.currentTurnIndex,
       currentNickname: room.players[room.currentTurnIndex]?.nickname,
       turnCount: room.turnCount,
+      totalTurns: TURNS_PER_PLAYER * 2,
       playerIndex,
     })
 
@@ -273,7 +275,12 @@ io.on('connection', socket => {
       text: text.trim(),
       playerIndex: room.currentTurnIndex,
     })
+  })
 
+  socket.on('end-turn', () => {
+    const room = getRoomBySocketId(socket.id)
+    if (!room || room.state !== 'battling') return
+    if (room.players[room.currentTurnIndex].id !== socket.id) return
     handleTurnEnd(room)
   })
 
@@ -307,6 +314,7 @@ io.on('connection', socket => {
       currentTurnIndex: room.currentTurnIndex,
       currentNickname: room.players[room.currentTurnIndex]?.nickname,
       turnCount: room.turnCount,
+      totalTurns: TURNS_PER_PLAYER * 2,
       state: room.state,
       spectators: room.spectators.map(s => ({ nickname: s.nickname, photoURL: s.photoURL })),
     })
