@@ -8,16 +8,15 @@ const BOT_MAX_TOKENS = 300        // 응답 최대 토큰 수 (높을수록 더 
 const BOT_THINKING_BUDGET = 0     // 사고 예산 (0=비활성, >0이면 maxOutputTokens 공유 주의)
 // ─────────────────────────────────────────────────────────
 
-function createModel() {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  return genAI.getGenerativeModel({
-    model: BOT_MODEL,
-    generationConfig: {
-      thinkingConfig: { thinkingBudget: BOT_THINKING_BUDGET },
-      maxOutputTokens: BOT_MAX_TOKENS,
-    },
-  })
-}
+// 모델 인스턴스를 모듈 레벨에서 한 번만 생성
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const botModel = genAI.getGenerativeModel({
+  model: BOT_MODEL,
+  generationConfig: {
+    thinkingConfig: { thinkingBudget: BOT_THINKING_BUDGET },
+    maxOutputTokens: BOT_MAX_TOKENS,
+  },
+})
 
 export async function generateBotMessage(topic, messages, humanNickname) {
   const chatLog = messages.map(m => `[${m.nickname}]: ${m.text}`).join('\n')
@@ -38,10 +37,10 @@ ${chatLog || '(아직 대화 없음)'}
 - 한국어 반말로, 2-3문장 이내로 간결하게 써.
 - 텍스트만 반환.`
   try {
-    const model = createModel()
-    const result = await model.generateContent(prompt)
+    const result = await botModel.generateContent(prompt)
     return result.response.text().trim()
-  } catch {
-    return '...'
+  } catch (err) {
+    console.error('[aiBot] 메시지 생성 실패:', err?.message ?? err)
+    return '(일시적 오류로 답변할 수 없습니다.)'
   }
 }

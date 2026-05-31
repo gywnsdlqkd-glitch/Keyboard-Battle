@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
+import { useGameTimer } from '../hooks/useGameTimer'
 import { useAuth } from '../contexts/AuthContext'
-
-const TURN_DURATION = 20
+import JudgingView from './JudgingView'
+import { TYPING_TIMEOUT_MS } from '../constants'
 
 export default function Spectate() {
   const { roomId } = useParams()
@@ -18,39 +19,22 @@ export default function Spectate() {
   const [currentNickname, setCurrentNickname] = useState('')
   const [turnCount, setTurnCount] = useState(0)
   const [totalTurns, setTotalTurns] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
   const [isJudging, setIsJudging] = useState(false)
   const [timeoutMsg, setTimeoutMsg] = useState('')
   const [error, setError] = useState('')
 
-  // 투표 상태
   const [isVoting, setIsVoting] = useState(false)
   const [canVote, setCanVote] = useState(false)
   const [myVote, setMyVote] = useState(null)
   const [voteCount, setVoteCount] = useState([0, 0])
   const [votedProfiles, setVotedProfiles] = useState([[], []])
-  const [voteTimeLeft, setVoteTimeLeft] = useState(0)
 
-  const timerRef = useRef(null)
-  const voteTimerRef = useRef(null)
-  const messagesEndRef = useRef(null)
-  const typingTimeoutRef = useRef(null)
   const [isTyping, setIsTyping] = useState(false)
   const [typingNickname, setTypingNickname] = useState('')
 
-  function resetTimer() {
-    if (timerRef.current) clearInterval(timerRef.current)
-    setTimeLeft(TURN_DURATION)
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }
+  const { timeLeft, voteTimeLeft, timerColor, resetTimer, startVoteTimer, stopVoteTimer, cleanup } = useGameTimer()
+  const messagesEndRef = useRef(null)
+  const typingTimeoutRef = useRef(null)
 
   function handleVote(playerIndex) {
     if (!canVote) return
@@ -98,27 +82,16 @@ export default function Spectate() {
       setIsTyping(true)
       setTypingNickname(nickname)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000)
+      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), TYPING_TIMEOUT_MS)
     },
     'game-judging': () => {
-      if (timerRef.current) clearInterval(timerRef.current)
       setIsJudging(true)
     },
     'vote-start': ({ players: votePlayers, duration }) => {
       setPlayers(votePlayers)
       setIsVoting(true)
       setCanVote(true)
-      setVoteTimeLeft(Math.ceil(duration / 1000))
-      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
-      voteTimerRef.current = setInterval(() => {
-        setVoteTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(voteTimerRef.current)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+      startVoteTimer(Math.ceil(duration / 1000))
     },
     'vote-update': ({ voteCount: vc, votedProfiles: vp }) => {
       setVoteCount(vc)
@@ -127,7 +100,7 @@ export default function Spectate() {
     'vote-closed': () => {
       setIsVoting(false)
       setCanVote(false)
-      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
+      stopVoteTimer()
     },
     'game-result': (result) => {
       sessionStorage.setItem('gameResult', JSON.stringify({ ...result, _isSpectator: true }))
@@ -149,8 +122,8 @@ export default function Spectate() {
       photoURL: user?.photoURL || null,
     })
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
+      cleanup()
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
   }, [])
 
@@ -176,90 +149,22 @@ export default function Spectate() {
   }
 
   if (isJudging) {
-    const allVoterNicknames = new Set([...votedProfiles[0], ...votedProfiles[1]].map(v => v.nickname))
-    const nonVoters = spectators.filter(s => !allVoterNicknames.has(s.nickname))
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6">
-        <div className="text-center">
-          <div className="text-6xl mb-3 animate-bounce">⚖️</div>
-          <h2 className="text-2xl font-black text-yellow-400 mb-1">AI 판정 중...</h2>
-          <p className="text-gray-500 text-sm">AI가 배틀 로그를 분석하고 있습니다</p>
-          <div className="flex justify-center gap-1 mt-4">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-        </div>
-
-        <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">총 {spectators.length}명 관람</span>
-              {isVoting && (
-                <span className={`text-sm font-black tabular-nums ${voteTimeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`}>
-                  {voteTimeLeft}s
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-3 mb-3">
-            <div className="flex-1 text-center">
-              <p className="text-yellow-400 font-bold text-xs mb-2 truncate">{players[0]}</p>
-              <div className="flex flex-wrap justify-center gap-1 min-h-8">
-                {votedProfiles[0].map((p, i) => (
-                  <div key={i} title={p.nickname} className="w-8 h-8 rounded-full border-2 border-yellow-400/40 overflow-hidden bg-gray-700 flex items-center justify-center">
-                    {p.photoURL ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
-                  </div>
-                ))}
-              </div>
-              <p className="text-yellow-400 font-black text-lg mt-2">{voteCount[0]}표</p>
-            </div>
-            <div className="w-px bg-gray-700 self-stretch" />
-            <div className="flex-1 text-center">
-              <p className="text-red-400 font-bold text-xs mb-2 truncate">{players[1]}</p>
-              <div className="flex flex-wrap justify-center gap-1 min-h-8">
-                {votedProfiles[1].map((p, i) => (
-                  <div key={i} title={p.nickname} className="w-8 h-8 rounded-full border-2 border-red-400/40 overflow-hidden bg-gray-700 flex items-center justify-center">
-                    {p.photoURL ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
-                  </div>
-                ))}
-              </div>
-              <p className="text-red-400 font-black text-lg mt-2">{voteCount[1]}표</p>
-            </div>
-          </div>
-
-          {nonVoters.length > 0 && (
-            <div className="border-t border-gray-800 pt-2 mt-1">
-              <p className="text-xs text-gray-600 mb-1">미투표</p>
-              <div className="flex flex-wrap gap-1">
-                {nonVoters.map((s, i) => (
-                  <div key={i} title={s.nickname} className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 opacity-30 flex items-center justify-center">
-                    {s.photoURL ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {canVote && (
-            <div className={`flex gap-3 ${nonVoters.length > 0 ? 'mt-3' : 'mt-1'}`}>
-              <button onClick={() => handleVote(0)} className={`flex-1 active:scale-95 font-black py-3 rounded-xl text-sm transition ${myVote === 0 ? 'bg-yellow-400 text-black' : 'bg-yellow-400/20 text-yellow-400 hover:bg-yellow-400/40'}`}>
-                {players[0]}{myVote === 0 && ' ✓'}
-              </button>
-              <button onClick={() => handleVote(1)} className={`flex-1 active:scale-95 font-black py-3 rounded-xl text-sm transition ${myVote === 1 ? 'bg-red-400 text-black' : 'bg-red-400/20 text-red-400 hover:bg-red-400/40'}`}>
-                {players[1]}{myVote === 1 && ' ✓'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <JudgingView
+        players={players}
+        spectators={spectators}
+        voteCount={voteCount}
+        votedProfiles={votedProfiles}
+        isVoting={isVoting}
+        voteTimeLeft={voteTimeLeft}
+        canVote={canVote}
+        myVote={myVote}
+        onVote={handleVote}
+      />
     )
   }
 
   const progress = (turnCount / totalTurns) * 100
-  const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
 
   return (
     <div className="min-h-screen flex flex-col max-w-lg mx-auto px-2 py-4">
@@ -267,10 +172,7 @@ export default function Spectate() {
         <span className="text-xs text-blue-400 font-bold bg-blue-400/10 border border-blue-400/30 px-3 py-1 rounded-full">
           👁 관람 중
         </span>
-        <button
-          onClick={() => navigate('/')}
-          className="text-xs text-gray-500 hover:text-gray-300 transition"
-        >
+        <button onClick={() => navigate('/')} className="text-xs text-gray-500 hover:text-gray-300 transition">
           나가기
         </button>
       </div>
@@ -284,10 +186,7 @@ export default function Spectate() {
           <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
         </div>
         <div className="w-full bg-gray-800 rounded-full h-1.5">
-          <div
-            className="bg-yellow-400 h-1.5 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="bg-yellow-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
@@ -296,15 +195,11 @@ export default function Spectate() {
           {players.map((p, i) => (
             <div key={i} className="flex items-center gap-1.5">
               <div className={`w-2 h-2 rounded-full ${currentTurnIndex === i ? 'bg-green-400 animate-pulse' : 'bg-gray-600'}`} />
-              <span className={`text-sm font-bold ${currentTurnIndex === i ? 'text-white' : 'text-gray-500'}`}>
-                {p}
-              </span>
+              <span className={`text-sm font-bold ${currentTurnIndex === i ? 'text-white' : 'text-gray-500'}`}>{p}</span>
             </div>
           ))}
         </div>
-        <div className={`text-2xl font-black tabular-nums ${timerColor}`}>
-          {timeLeft}s
-        </div>
+        <div className={`text-2xl font-black tabular-nums ${timerColor}`}>{timeLeft}s</div>
       </div>
 
       {timeoutMsg && (
@@ -318,15 +213,10 @@ export default function Spectate() {
           <span className="text-xs text-gray-500">👁 {spectators.length}명 관람 중</span>
           <div className="flex -space-x-2">
             {spectators.map((s, i) => (
-              <div
-                key={i}
-                title={s.nickname}
-                className="w-7 h-7 rounded-full border-2 border-gray-900 overflow-hidden bg-gray-700 flex items-center justify-center"
-              >
+              <div key={i} title={s.nickname} className="w-7 h-7 rounded-full border-2 border-gray-900 overflow-hidden bg-gray-700 flex items-center justify-center">
                 {s.photoURL
                   ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  : <span className="text-xs text-gray-400">👤</span>
-                }
+                  : <span className="text-xs text-gray-400">👤</span>}
               </div>
             ))}
           </div>
@@ -363,14 +253,8 @@ export default function Spectate() {
               const isLeft = msg.playerIndex === 0
               return (
                 <div key={i} className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                    isLeft
-                      ? 'bg-gray-800 text-white rounded-bl-sm'
-                      : 'bg-yellow-400 text-black rounded-br-sm'
-                  }`}>
-                    <p className={`text-xs mb-0.5 font-bold ${isLeft ? 'text-gray-400' : 'text-yellow-800'}`}>
-                      {msg.nickname}
-                    </p>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isLeft ? 'bg-gray-800 text-white rounded-bl-sm' : 'bg-yellow-400 text-black rounded-br-sm'}`}>
+                    <p className={`text-xs mb-0.5 font-bold ${isLeft ? 'text-gray-400' : 'text-yellow-800'}`}>{msg.nickname}</p>
                     <p className="text-sm font-medium break-words">{msg.text}</p>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { getRandomTopic } from '../data/topics'
 import { useAuth } from '../contexts/AuthContext'
+import { MAX_NICK_LENGTH, MAX_TOPIC_LENGTH } from '../constants'
 
 export default function Lobby() {
   const navigate = useNavigate()
@@ -131,7 +132,7 @@ export default function Lobby() {
               placeholder="배틀 닉네임"
               value={nickname}
               onChange={e => { setNickname(e.target.value); setError('') }}
-              maxLength={12}
+              maxLength={MAX_NICK_LENGTH}
             />
           </div>
 
@@ -159,7 +160,7 @@ export default function Lobby() {
                   placeholder="예: 짜장면 vs 짬뽕"
                   value={topic}
                   onChange={e => setTopic(e.target.value)}
-                  maxLength={50}
+                  maxLength={MAX_TOPIC_LENGTH}
                 />
                 <button
                   type="button"

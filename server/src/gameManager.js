@@ -1,7 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
-
-const TURNS_PER_PLAYER = 5   // 총 10턴 (5 * 2). 변경하려면 이 값만 수정
-const TURN_DURATION_MS = 20000
+import { TURNS_PER_PLAYER, TURN_DURATION_MS } from './constants.js'
 
 const rooms = new Map()
 const results = new Map()
@@ -70,6 +68,7 @@ export function startGame(room) {
   room.voteOpen = true
   room.votes = []
   room.votedSocketIds = new Set()
+  room.isProcessingTurnEnd = false
 }
 
 export function addMessage(room, socketId, text) {
@@ -180,4 +179,3 @@ export function rejoinRoom(roomId, newSocketId, nickname) {
   return { room, playerIndex: room.players.indexOf(player), oldSocketId }
 }
 
-export { TURN_DURATION_MS, TURNS_PER_PLAYER }

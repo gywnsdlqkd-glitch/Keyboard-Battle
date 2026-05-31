@@ -1,178 +1,43 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useSocket } from '../hooks/useSocket'
+import { useGameTimer } from '../hooks/useGameTimer'
+import { useBattleSocket } from '../hooks/useBattleSocket'
 import { sounds } from '../utils/sounds'
-
-const TURN_DURATION = 20
+import JudgingView from './JudgingView'
+import { MAX_MSG_LENGTH } from '../constants'
 
 export default function Battle() {
   const { roomId } = useParams()
   const navigate = useNavigate()
   const nickname = sessionStorage.getItem('nickname')
   const topic = sessionStorage.getItem('topic')
-  const [myPlayerIndex, setMyPlayerIndex] = useState(
-    parseInt(sessionStorage.getItem('playerIndex') ?? '0', 10)
-  )
 
-  const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
-  const [currentTurnIndex, setCurrentTurnIndex] = useState(0)
-  const [currentNickname, setCurrentNickname] = useState('')
-  const [players, setPlayers] = useState([])
-  const [turnCount, setTurnCount] = useState(0)
-  const [totalTurns, setTotalTurns] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
-  const [isJudging, setIsJudging] = useState(false)
-  const [timeoutMsg, setTimeoutMsg] = useState('')
-  const [opponentDisconnected, setOpponentDisconnected] = useState(false)
-  const [isOpponentTyping, setIsOpponentTyping] = useState(false)
-  const [voteCount, setVoteCount] = useState([0, 0])
-  const [votedProfiles, setVotedProfiles] = useState([[], []])
-  const [voteTimeLeft, setVoteTimeLeft] = useState(0)
-  const [isVoting, setIsVoting] = useState(false)
-  const [endTurnPending, setEndTurnPending] = useState(false)
-  const [spectators, setSpectators] = useState([])
-
-  const timerRef = useRef(null)
-  const typingTimeoutRef = useRef(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
-  const prevTimeLeft = useRef(TURN_DURATION)
-  const voteTimerRef = useRef(null)
-  const endTurnTimeoutRef = useRef(null)
+
+  const { timeLeft, voteTimeLeft, timerColor, resetTimer, startVoteTimer, stopVoteTimer, stopTimer, cleanup: cleanupTimer } = useGameTimer({ enableSounds: true })
+
+  const {
+    socket,
+    myPlayerIndex, messages, setMessages,
+    currentTurnIndex, players,
+    turnCount, totalTurns,
+    isJudging, timeoutMsg, opponentDisconnected, isOpponentTyping,
+    voteCount, votedProfiles, isVoting,
+    endTurnPending, spectators,
+    handleEndTurn, cleanup: cleanupSocket,
+  } = useBattleSocket({ roomId, nickname, navigate, resetTimer, startVoteTimer, stopVoteTimer, stopTimer })
 
   const isMyTurn = currentTurnIndex === myPlayerIndex
-
-  function resetTimer(startFrom = TURN_DURATION) {
-    if (timerRef.current) clearInterval(timerRef.current)
-    setTimeLeft(startFrom)
-    prevTimeLeft.current = startFrom
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }
-
-  const socket = useSocket({
-    'game-start': ({ players, currentTurnIndex, currentNickname, turnCount, totalTurns: tt }) => {
-      sessionStorage.setItem('battleSession', JSON.stringify({ roomId, nickname }))
-      setPlayers(players)
-      setCurrentTurnIndex(currentTurnIndex)
-      setCurrentNickname(currentNickname)
-      setTurnCount(turnCount)
-      if (tt) setTotalTurns(tt)
-      sessionStorage.setItem('gameData', JSON.stringify({ players, currentTurnIndex, currentNickname, turnCount, totalTurns: tt }))
-      resetTimer()
-    },
-    'message-added': ({ nickname: sender, text, playerIndex }) => {
-      setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
-    },
-    'turn-update': ({ currentTurnIndex, currentNickname, turnCount, messages: serverMessages }) => {
-      if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
-      setCurrentTurnIndex(currentTurnIndex)
-      setCurrentNickname(currentNickname)
-      setTurnCount(turnCount)
-      setTimeoutMsg('')
-      setIsOpponentTyping(false)
-      setEndTurnPending(false)
-      setMessages(prev => {
-        if (!serverMessages?.length) return prev
-        if (serverMessages.length < prev.length) return prev
-        return serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex }))
-      })
-      sounds.turnChange()
-      resetTimer()
-      const existing = JSON.parse(sessionStorage.getItem('gameData') || '{}')
-      sessionStorage.setItem('gameData', JSON.stringify({ ...existing, currentTurnIndex, currentNickname, turnCount }))
-    },
-    'turn-timeout': ({ nickname: timedOutNick }) => {
-      setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)
-    },
-    'game-judging': () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      sounds.turnChange()
-      setIsJudging(true)
-    },
-    'vote-start': ({ duration }) => {
-      setIsVoting(true)
-      setVoteTimeLeft(Math.ceil(duration / 1000))
-      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
-      voteTimerRef.current = setInterval(() => {
-        setVoteTimeLeft(prev => {
-          if (prev <= 1) { clearInterval(voteTimerRef.current); return 0 }
-          return prev - 1
-        })
-      }, 1000)
-    },
-    'vote-update': ({ voteCount: vc, votedProfiles: vp }) => {
-      setVoteCount(vc)
-      if (vp) setVotedProfiles(vp)
-    },
-    'vote-closed': () => {
-      setIsVoting(false)
-      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
-    },
-    'end-turn-rejected': () => {
-      if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
-      setEndTurnPending(false)
-    },
-    'game-result': (result) => {
-      sessionStorage.removeItem('battleSession')
-      sessionStorage.setItem('gameResult', JSON.stringify(result))
-      navigate(`/result/${roomId}`, { replace: true })
-    },
-    'opponent-left': () => {
-      sessionStorage.removeItem('battleSession')
-      navigate('/')
-    },
-    'opponent-disconnected': () => {
-      setOpponentDisconnected(true)
-    },
-    'opponent-reconnected': () => {
-      setOpponentDisconnected(false)
-    },
-    'rejoin-success': ({ players, messages: serverMessages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, playerIndex, state, turnElapsedMs }) => {
-      sessionStorage.setItem('playerIndex', String(playerIndex))
-      setMyPlayerIndex(playerIndex)
-      setPlayers(players)
-      setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
-      setCurrentTurnIndex(currentTurnIndex)
-      setCurrentNickname(currentNickname)
-      setTurnCount(turnCount)
-      if (tt) setTotalTurns(tt)
-      sessionStorage.setItem('gameData', JSON.stringify({ players, currentTurnIndex, currentNickname, turnCount, totalTurns: tt }))
-      if (state === 'judging') {
-        if (timerRef.current) clearInterval(timerRef.current)
-        setIsJudging(true)
-      } else {
-        const elapsed = Math.floor((turnElapsedMs ?? 0) / 1000)
-        resetTimer(Math.max(1, TURN_DURATION - elapsed))
-      }
-    },
-    'rejoin-error': () => {
-      sessionStorage.removeItem('battleSession')
-      navigate('/')
-    },
-    'spectator-list': (list) => setSpectators(list),
-    'typing-indicator': () => {
-      setIsOpponentTyping(true)
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-      typingTimeoutRef.current = setTimeout(() => setIsOpponentTyping(false), 2000)
-    },
-  })
+  const isLastTurn = turnCount + 1 >= totalTurns
+  const progress = (turnCount / totalTurns) * 100
 
   useEffect(() => {
-    // freshBattleEntry 플래그로 정상 진입(Room.jsx game-start 경유) 여부 판단
     const isFreshEntry = sessionStorage.getItem('freshBattleEntry') === 'true'
     sessionStorage.removeItem('freshBattleEntry')
 
     if (!isFreshEntry) {
-      // 새로고침 또는 직접 URL 접근 → 로비로
       sessionStorage.removeItem('gameData')
       navigate('/')
       return
@@ -183,10 +48,8 @@ export default function Battle() {
       return
     }
 
-    // 소켓 자동 재연결 대비 세션 저장
     sessionStorage.setItem('battleSession', JSON.stringify({ roomId, nickname }))
 
-    // 소켓 자동 재연결(socket.id 변경) 시 서버에 rejoin 요청
     const handleConnect = () => {
       const raw = sessionStorage.getItem('battleSession')
       if (!raw) return
@@ -200,17 +63,11 @@ export default function Battle() {
     const stored = sessionStorage.getItem('gameData')
     if (stored) {
       const data = JSON.parse(stored)
-      setPlayers(data.players)
-      setCurrentTurnIndex(data.currentTurnIndex)
-      setCurrentNickname(data.currentNickname)
-      setTurnCount(data.turnCount)
-      if (data.totalTurns) setTotalTurns(data.totalTurns)
-      resetTimer()
+      setMessages(data.messages || [])
     } else if (!nickname || !topic) {
       navigate('/')
     }
 
-    // 뒤로가기 차단
     window.history.pushState(null, '', window.location.href)
     const onPop = () => {
       window.history.pushState(null, '', window.location.href)
@@ -222,18 +79,10 @@ export default function Battle() {
       socket.off('connect', handleConnect)
       window.removeEventListener('popstate', onPop)
       sessionStorage.removeItem('battleSession')
-      if (timerRef.current) clearInterval(timerRef.current)
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-      if (voteTimerRef.current) clearInterval(voteTimerRef.current)
-      if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
+      cleanupTimer()
+      cleanupSocket()
     }
   }, [])
-
-  useEffect(() => {
-    if (timeLeft === 10) sounds.timerWarning()
-    else if (timeLeft <= 5 && timeLeft > 0 && prevTimeLeft.current > timeLeft) sounds.timerCritical()
-    prevTimeLeft.current = timeLeft
-  }, [timeLeft])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -260,87 +109,16 @@ export default function Battle() {
     if (isMyTurn) socket.emit('typing')
   }
 
-  function handleEndTurn() {
-    if (!isMyTurn || isJudging || endTurnPending) return
-    setEndTurnPending(true)
-    socket.emit('end-turn')
-    if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
-    endTurnTimeoutRef.current = setTimeout(() => setEndTurnPending(false), 5000)
-  }
-
-  const progress = (turnCount / totalTurns) * 100
-  const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
-  const isLastTurn = turnCount + 1 >= totalTurns
-
   if (isJudging) {
-    const allVoterNicknames = new Set([...votedProfiles[0], ...votedProfiles[1]].map(v => v.nickname))
-    const nonVoters = spectators.filter(s => !allVoterNicknames.has(s.nickname))
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6">
-        <div className="text-center">
-          <div className="text-6xl mb-3 animate-bounce">⚖️</div>
-          <h2 className="text-2xl font-black text-yellow-400 mb-1">AI 판정 중...</h2>
-          <p className="text-gray-500 text-sm">AI가 배틀 로그를 분석하고 있습니다</p>
-          <div className="flex justify-center gap-1 mt-4">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-        </div>
-
-        <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">총 {spectators.length}명 관람</span>
-              {isVoting && (
-                <span className={`text-sm font-black tabular-nums ${voteTimeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`}>
-                  {voteTimeLeft}s
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-3 mb-3">
-            <div className="flex-1 text-center">
-              <p className="text-yellow-400 font-bold text-xs mb-2 truncate">{players[0]}</p>
-              <div className="flex flex-wrap justify-center gap-1 min-h-8">
-                {votedProfiles[0].map((p, i) => (
-                  <div key={i} title={p.nickname} className="w-8 h-8 rounded-full border-2 border-yellow-400/40 overflow-hidden bg-gray-700 flex items-center justify-center">
-                    {p.photoURL ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
-                  </div>
-                ))}
-              </div>
-              <p className="text-yellow-400 font-black text-lg mt-2">{voteCount[0]}표</p>
-            </div>
-            <div className="w-px bg-gray-700 self-stretch" />
-            <div className="flex-1 text-center">
-              <p className="text-red-400 font-bold text-xs mb-2 truncate">{players[1]}</p>
-              <div className="flex flex-wrap justify-center gap-1 min-h-8">
-                {votedProfiles[1].map((p, i) => (
-                  <div key={i} title={p.nickname} className="w-8 h-8 rounded-full border-2 border-red-400/40 overflow-hidden bg-gray-700 flex items-center justify-center">
-                    {p.photoURL ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
-                  </div>
-                ))}
-              </div>
-              <p className="text-red-400 font-black text-lg mt-2">{voteCount[1]}표</p>
-            </div>
-          </div>
-
-          {nonVoters.length > 0 && (
-            <div className="border-t border-gray-800 pt-2 mt-1">
-              <p className="text-xs text-gray-600 mb-1">미투표</p>
-              <div className="flex flex-wrap gap-1">
-                {nonVoters.map((s, i) => (
-                  <div key={i} title={s.nickname} className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 opacity-30 flex items-center justify-center">
-                    {s.photoURL ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <JudgingView
+        players={players}
+        spectators={spectators}
+        voteCount={voteCount}
+        votedProfiles={votedProfiles}
+        isVoting={isVoting}
+        voteTimeLeft={voteTimeLeft}
+      />
     )
   }
 
@@ -355,10 +133,7 @@ export default function Battle() {
           <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
         </div>
         <div className="w-full bg-gray-800 rounded-full h-1.5">
-          <div
-            className="bg-yellow-400 h-1.5 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="bg-yellow-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
@@ -367,15 +142,11 @@ export default function Battle() {
           {players.map((p, i) => (
             <div key={i} className="flex items-center gap-1.5">
               <div className={`w-2 h-2 rounded-full ${currentTurnIndex === i ? 'bg-green-400 animate-pulse' : 'bg-gray-600'}`} />
-              <span className={`text-sm font-bold ${currentTurnIndex === i ? 'text-white' : 'text-gray-500'}`}>
-                {p}
-              </span>
+              <span className={`text-sm font-bold ${currentTurnIndex === i ? 'text-white' : 'text-gray-500'}`}>{p}</span>
             </div>
           ))}
         </div>
-        <div className={`text-2xl font-black tabular-nums ${timerColor}`}>
-          {timeLeft}s
-        </div>
+        <div className={`text-2xl font-black tabular-nums ${timerColor}`}>{timeLeft}s</div>
       </div>
 
       {opponentDisconnected && (
@@ -398,8 +169,7 @@ export default function Battle() {
               <div key={i} title={s.nickname} className="w-7 h-7 rounded-full border-2 border-gray-900 overflow-hidden bg-gray-700 flex items-center justify-center">
                 {s.photoURL
                   ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  : <span className="text-xs text-gray-400">👤</span>
-                }
+                  : <span className="text-xs text-gray-400">👤</span>}
               </div>
             ))}
           </div>
@@ -438,13 +208,8 @@ export default function Battle() {
               const isMine = msg.playerIndex === myPlayerIndex
               return (
                 <div key={i} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMine
-                    ? 'bg-yellow-400 text-black rounded-br-sm'
-                    : 'bg-gray-800 text-white rounded-bl-sm'
-                    }`}>
-                    {!isMine && (
-                      <p className="text-xs text-gray-400 mb-0.5 font-bold">{msg.nickname}</p>
-                    )}
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMine ? 'bg-yellow-400 text-black rounded-br-sm' : 'bg-gray-800 text-white rounded-bl-sm'}`}>
+                    {!isMine && <p className="text-xs text-gray-400 mb-0.5 font-bold">{msg.nickname}</p>}
                     <p className="text-sm font-medium break-words">{msg.text}</p>
                   </div>
                 </div>
@@ -469,7 +234,7 @@ export default function Battle() {
             value={input}
             onChange={handleInputChange}
             disabled={!isMyTurn || isJudging}
-            maxLength={200}
+            maxLength={MAX_MSG_LENGTH}
             inputMode="text"
             enterKeyHint="send"
           />
@@ -486,7 +251,7 @@ export default function Battle() {
       {isMyTurn && !isJudging && (
         <button
           type="button"
-          onClick={isLastTurn ? undefined : handleEndTurn}
+          onClick={isLastTurn ? undefined : () => handleEndTurn(isMyTurn, isJudging)}
           disabled={endTurnPending || isLastTurn}
           className={`w-full mt-2 border font-bold py-2 rounded-lg text-xs transition ${
             isLastTurn || endTurnPending
@@ -497,7 +262,6 @@ export default function Battle() {
           {isLastTurn ? '마지막 턴입니다.' : endTurnPending ? '처리 중...' : '턴 종료 ▶'}
         </button>
       )}
-
     </div>
   )
 }
