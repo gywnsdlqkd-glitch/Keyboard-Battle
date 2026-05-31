@@ -100,9 +100,12 @@ function joinBotToRoom(room) {
   io.to(room.id).emit('player-joined', { nickname: BOT_NICKNAME })
   io.emit('room-list', getRoomList())
   ;[3, 2, 1].forEach((n, i) =>
-    setTimeout(() => io.to(room.id).emit('countdown', { count: n }), i * 1000)
+    setTimeout(() => {
+      if (room.players[1]?.isBot) io.to(room.id).emit('countdown', { count: n })
+    }, i * 1000)
   )
   setTimeout(() => {
+    if (!room.players[1]?.isBot) return  // 사람이 봇을 교체한 경우 봇 게임 시작 취소
     startGame(room)
     io.to(room.id).emit('game-start', {
       players: room.players.map(p => p.nickname),

@@ -36,8 +36,12 @@ export function createRoom(hostSocketId, nickname, topic) {
 export function joinRoom(roomId, socketId, nickname) {
   const room = rooms.get(roomId)
   if (!room) return { error: '방을 찾을 수 없습니다.' }
-  if (room.players.length >= 2) return { error: '방이 꽉 찼습니다.' }
   if (room.state !== 'waiting') return { error: '이미 시작된 게임입니다.' }
+  // 봇이 카운트다운 중이면 사람으로 교체
+  if (room.players.length === 2 && room.players[1]?.isBot) {
+    room.players.pop()
+  }
+  if (room.players.length >= 2) return { error: '방이 꽉 찼습니다.' }
   room.players.push({ id: socketId, nickname })
   return { room }
 }
