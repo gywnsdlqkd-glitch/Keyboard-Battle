@@ -158,11 +158,11 @@ export default function Result() {
               const myIdx = parseInt(sessionStorage.getItem('playerIndex') ?? '0', 10)
               const isMine = isSpectator ? msg.playerIndex === 0 : msg.playerIndex === myIdx
               return (
-                <div key={i} className={`flex ${isMine ? 'justify-start' : 'justify-end'}`}>
+                <div key={i} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] rounded-xl px-3 py-1.5 text-xs ${
                     isMine
-                      ? 'bg-gray-800 text-gray-300'
-                      : 'bg-yellow-400/20 text-yellow-200'
+                      ? 'bg-yellow-400/20 text-yellow-200'
+                      : 'bg-gray-800 text-gray-300'
                   }`}>
                     <span className="font-bold mr-1 opacity-70">{msg.nickname}:</span>
                     {msg.text}

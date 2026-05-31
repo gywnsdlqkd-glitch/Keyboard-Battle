@@ -72,8 +72,12 @@ function startTurnTimer(room) {
 }
 
 async function handleBotTurn(room) {
+  const capturedTurnCount = room.turnCount
+
   await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000))
   if (room.state !== 'battling') return
+  if (room.turnCount !== capturedTurnCount) return
+
   const humanPlayer = room.players.find(p => !p.isBot)
   if (humanPlayer?.disconnected) return
 
@@ -82,13 +86,16 @@ async function handleBotTurn(room) {
 
   const text = await generateBotMessage(room.topic, room.messages)
   if (room.state !== 'battling') return
+  if (room.turnCount !== capturedTurnCount) return
 
   room.messages.push({ nickname: bot.nickname, text, turn: room.turnCount, playerIndex: room.currentTurnIndex })
   io.to(room.id).emit('message-added', { nickname: bot.nickname, text, playerIndex: room.currentTurnIndex })
 
   await new Promise(r => setTimeout(r, 800))
+  if (room.turnCount !== capturedTurnCount) return
   if (room.turnCount + 1 >= TURNS_PER_PLAYER * 2) {
     await new Promise(r => setTimeout(r, BOT_LAST_TURN_DELAY_MS))
+    if (room.turnCount !== capturedTurnCount) return
   }
   if (room.state === 'battling') handleTurnEnd(room)
 }
