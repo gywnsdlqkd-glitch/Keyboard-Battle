@@ -43,7 +43,8 @@ const io = new Server(httpServer, {
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
 
-const BOT_JOIN_DELAY_MS = 10 * 1000  // 봇 참여 대기 시간
+const BOT_JOIN_DELAY_MS = 10 * 1000       // 봇 참여 대기 시간
+const BOT_LAST_TURN_DELAY_MS = 5 * 1000  // 봇 마지막 턴 후 읽기 대기 시간
 
 // 투표/판정 비중 설정 (합계 1.0)
 const VOTE_DURATION_MS = 15000   // 관람자 투표 창 15초
@@ -86,6 +87,9 @@ async function handleBotTurn(room) {
   io.to(room.id).emit('message-added', { nickname: bot.nickname, text, playerIndex: room.currentTurnIndex })
 
   await new Promise(r => setTimeout(r, 800))
+  if (room.turnCount + 1 >= TURNS_PER_PLAYER * 2) {
+    await new Promise(r => setTimeout(r, BOT_LAST_TURN_DELAY_MS))
+  }
   if (room.state === 'battling') handleTurnEnd(room)
 }
 
