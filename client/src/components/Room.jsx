@@ -49,7 +49,7 @@ export default function Room() {
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">배틀 주제</p>
-          <p className="text-xl font-bold text-white mb-5">"{topic}"</p>
+          <p className="text-xl font-bold text-white mb-5 line-clamp-2 break-all">"{topic}"</p>
 
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">방 코드</p>
           <div className="flex items-center justify-center gap-2 mb-3">

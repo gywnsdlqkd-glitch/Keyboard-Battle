@@ -310,7 +310,7 @@ export default function Battle() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">주제</span>
-            <span className="text-sm font-bold text-yellow-400">"{topic}"</span>
+            <span className="text-sm font-bold text-yellow-400 line-clamp-1 break-all">"{topic}"</span>
           </div>
           <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
         </div>
