@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { sounds } from '../utils/sounds'
 
-const TURN_DURATION = 30
+const TURN_DURATION = 20
 
 export default function Battle() {
   const { roomId } = useParams()
@@ -258,56 +258,72 @@ export default function Battle() {
   const isLastTurn = turnCount + 1 >= totalTurns
 
   if (isJudging) {
-    const totalVotesNow = voteCount[0] + voteCount[1]
+    const allVoterNicknames = new Set([...votedProfiles[0], ...votedProfiles[1]].map(v => v.nickname))
+    const nonVoters = spectators.filter(s => !allVoterNicknames.has(s.nickname))
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="text-center w-full max-w-sm">
-          <div className="text-6xl mb-4 animate-bounce">⚖️</div>
-          <h2 className="text-2xl font-black text-yellow-400 mb-2">AI 판정 중...</h2>
-          <p className="text-gray-400 mb-6">AI가 배틀 로그를 분석하고 있습니다</p>
-          <div className="flex justify-center gap-1 mb-8">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6">
+        <div className="text-center">
+          <div className="text-6xl mb-3 animate-bounce">⚖️</div>
+          <h2 className="text-2xl font-black text-yellow-400 mb-1">AI 판정 중...</h2>
+          <p className="text-gray-500 text-sm">AI가 배틀 로그를 분석하고 있습니다</p>
+          <div className="flex justify-center gap-1 mt-4">
             {[0, 1, 2].map(i => (
-              <div
-                key={i}
-                className="w-2 h-2 rounded-full bg-yellow-400 animate-bounce"
-                style={{ animationDelay: `${i * 0.15}s` }}
-              />
+              <div key={i} className="w-2 h-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
             ))}
           </div>
+        </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
+        <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-blue-400 font-black text-sm">🗳️ 관람자 투표</p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">총 {spectators.length}명 관람</span>
               {isVoting && (
-                <span className={`text-sm font-black ${voteTimeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`}>
+                <span className={`text-sm font-black tabular-nums ${voteTimeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-gray-400'}`}>
                   {voteTimeLeft}s
                 </span>
               )}
             </div>
-
-            <div className="flex gap-3 mb-3">
-              {players.map((p, i) => (
-                <div key={i} className={`flex-1 rounded-xl p-3 border ${i === 0 ? 'border-yellow-400/30' : 'border-red-400/30'}`}>
-                  <p className="text-xs text-gray-400 mb-1 truncate">{p}</p>
-                  <p className={`text-2xl font-black ${i === 0 ? 'text-yellow-400' : 'text-red-400'}`}>{voteCount[i]}표</p>
-                  <div className="flex flex-wrap gap-1 mt-2 min-h-[20px]">
-                    {votedProfiles[i]?.map((profile, j) => (
-                      <div key={j} className="w-5 h-5 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center" title={profile.nickname}>
-                        {profile.photoURL
-                          ? <img src={profile.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          : <span className="text-[8px] text-gray-300">{profile.nickname?.[0]?.toUpperCase()}</span>
-                        }
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {totalVotesNow === 0 && (
-              <p className="text-gray-600 text-xs text-center">아직 투표한 관람자가 없어요</p>
-            )}
           </div>
+
+          <div className="flex gap-3 mb-3">
+            <div className="flex-1 text-center">
+              <p className="text-yellow-400 font-bold text-xs mb-2 truncate">{players[0]}</p>
+              <div className="flex flex-wrap justify-center gap-1 min-h-8">
+                {votedProfiles[0].map((p, i) => (
+                  <div key={i} title={p.nickname} className="w-8 h-8 rounded-full border-2 border-yellow-400/40 overflow-hidden bg-gray-700 flex items-center justify-center">
+                    {p.photoURL ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
+                  </div>
+                ))}
+              </div>
+              <p className="text-yellow-400 font-black text-lg mt-2">{voteCount[0]}표</p>
+            </div>
+            <div className="w-px bg-gray-700 self-stretch" />
+            <div className="flex-1 text-center">
+              <p className="text-red-400 font-bold text-xs mb-2 truncate">{players[1]}</p>
+              <div className="flex flex-wrap justify-center gap-1 min-h-8">
+                {votedProfiles[1].map((p, i) => (
+                  <div key={i} title={p.nickname} className="w-8 h-8 rounded-full border-2 border-red-400/40 overflow-hidden bg-gray-700 flex items-center justify-center">
+                    {p.photoURL ? <img src={p.photoURL} alt={p.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
+                  </div>
+                ))}
+              </div>
+              <p className="text-red-400 font-black text-lg mt-2">{voteCount[1]}표</p>
+            </div>
+          </div>
+
+          {nonVoters.length > 0 && (
+            <div className="border-t border-gray-800 pt-2 mt-1">
+              <p className="text-xs text-gray-600 mb-1">미투표</p>
+              <div className="flex flex-wrap gap-1">
+                {nonVoters.map((s, i) => (
+                  <div key={i} title={s.nickname} className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 opacity-30 flex items-center justify-center">
+                    {s.photoURL ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs">👤</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
