@@ -102,6 +102,7 @@ export function getBattlingRoomList() {
       topic: r.topic,
       players: r.players.map(p => p.nickname),
       turnCount: r.turnCount,
+      totalTurns: TURNS_PER_PLAYER * 2,
       spectatorCount: r.spectators.length,
     }))
 }

@@ -20,7 +20,7 @@ export default function Battle() {
   const [currentNickname, setCurrentNickname] = useState('')
   const [players, setPlayers] = useState([])
   const [turnCount, setTurnCount] = useState(0)
-  const [totalTurns, setTotalTurns] = useState(4)
+  const [totalTurns, setTotalTurns] = useState(0)
   const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
   const [isJudging, setIsJudging] = useState(false)
   const [timeoutMsg, setTimeoutMsg] = useState('')
@@ -65,6 +65,7 @@ export default function Battle() {
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
       if (tt) setTotalTurns(tt)
+      sessionStorage.setItem('gameData', JSON.stringify({ players, currentTurnIndex, currentNickname, turnCount, totalTurns: tt }))
       resetTimer()
     },
     'message-added': ({ nickname: sender, text, playerIndex }) => {
@@ -144,7 +145,7 @@ export default function Battle() {
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
       if (tt) setTotalTurns(tt)
-      sessionStorage.setItem('gameData', JSON.stringify({ players, currentTurnIndex, currentNickname, turnCount }))
+      sessionStorage.setItem('gameData', JSON.stringify({ players, currentTurnIndex, currentNickname, turnCount, totalTurns: tt }))
       if (state === 'judging') {
         if (timerRef.current) clearInterval(timerRef.current)
         setIsJudging(true)
@@ -199,6 +200,7 @@ export default function Battle() {
       setCurrentTurnIndex(data.currentTurnIndex)
       setCurrentNickname(data.currentNickname)
       setTurnCount(data.turnCount)
+      if (data.totalTurns) setTotalTurns(data.totalTurns)
       resetTimer()
     } else if (!nickname || !topic) {
       navigate('/')

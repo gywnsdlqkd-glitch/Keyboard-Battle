@@ -17,7 +17,7 @@ export default function Spectate() {
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0)
   const [currentNickname, setCurrentNickname] = useState('')
   const [turnCount, setTurnCount] = useState(0)
-  const [totalTurns, setTotalTurns] = useState(4)
+  const [totalTurns, setTotalTurns] = useState(0)
   const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
   const [isJudging, setIsJudging] = useState(false)
   const [timeoutMsg, setTimeoutMsg] = useState('')

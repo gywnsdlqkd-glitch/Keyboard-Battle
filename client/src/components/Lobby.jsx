@@ -239,7 +239,7 @@ export default function Lobby() {
                   <div>
                     <p className="font-bold text-white text-sm line-clamp-1 break-all">{room.topic}</p>
                     <p className="text-xs text-gray-500">
-                      {room.players[0]} vs {room.players[1]} · {room.turnCount}/10턴
+                      {room.players[0]} vs {room.players[1]} · {room.turnCount}/{room.totalTurns ?? 10}턴
                       {room.spectatorCount > 0 && ` · 👁 ${room.spectatorCount}명 관람 중`}
                     </p>
                   </div>
