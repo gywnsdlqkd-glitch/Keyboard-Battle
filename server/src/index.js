@@ -99,10 +99,6 @@ async function handleBotTurn(room) {
 
   await new Promise(r => setTimeout(r, 800))
   if (room.turnCount !== capturedTurnCount) return
-  if (room.turnCount + 1 >= TURNS_PER_PLAYER * 2) {
-    await new Promise(r => setTimeout(r, BOT_LAST_TURN_DELAY_MS))
-    if (room.turnCount !== capturedTurnCount) return
-  }
   if (room.state === 'battling') handleTurnEnd(room)
 }
 
@@ -150,6 +146,10 @@ async function handleTurnEnd(room, isTimeout = false) {
   const result = nextTurn(room)
 
   if (result.finished) {
+    room.state = 'ending'
+    io.to(room.id).emit('game-ending')
+    await new Promise(r => setTimeout(r, 10000))
+
     io.to(room.id).emit('game-judging')
 
     // 투표 초기화
@@ -193,21 +193,9 @@ async function handleTurnEnd(room, isTimeout = false) {
                       : finalScore1 > finalScore0 ? room.players[1].nickname
                       : scoreBasedWinner
 
-    let voteCommentLine
-    if (totalVotes === 0) {
-      voteCommentLine = '\n\n[관람자 여론] 투표 참여 없음'
-    } else if (voteScore0 === voteScore1) {
-      voteCommentLine = '\n\n[관람자 여론] 관람자 여론이 팽팽하게 갈렸습니다.'
-    } else {
-      const voteWinner = voteScore0 > voteScore1 ? room.players[0].nickname : room.players[1].nickname
-      const winScore = Math.max(voteScore0, voteScore1)
-      const loseScore = Math.min(voteScore0, voteScore1)
-      voteCommentLine = `\n\n[관람자 여론] 관람자들은 ${voteWinner}를 더 지지했습니다. (${winScore}% vs ${loseScore}%)`
-    }
-
     const resultPayload = {
       winner: finalWinner,
-      comment: judgment.comment + voteCommentLine,
+      comment: judgment.comment,
       player1Score: finalScore0,
       player2Score: finalScore1,
       aiPlayer1Score: judgment.player1Score,
@@ -363,7 +351,7 @@ io.on('connection', socket => {
     const added = addMessage(room, socket.id, text.trim())
     if (!added) return
 
-    io.to(room.id).emit('message-added', {
+    socket.to(room.id).emit('message-added', {
       nickname: room.players.find(p => p.id === socket.id).nickname,
       text: text.trim(),
       playerIndex: room.currentTurnIndex,
@@ -372,7 +360,10 @@ io.on('connection', socket => {
 
   socket.on('end-turn', () => {
     const room = getRoomBySocketId(socket.id)
-    if (!room || room.state !== 'battling') return
+    if (!room || room.state !== 'battling') {
+      socket.emit('end-turn-rejected')
+      return
+    }
     if (room.players[room.currentTurnIndex].id !== socket.id) {
       socket.emit('end-turn-rejected')
       return

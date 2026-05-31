@@ -29,6 +29,18 @@ export default function Result() {
   }, [navigate, roomId])
 
   useEffect(() => {
+    window.history.pushState(null, '', window.location.href)
+    const onPop = () => {
+      sessionStorage.removeItem('gameResult')
+      sessionStorage.removeItem('gameData')
+      sessionStorage.removeItem('battleSession')
+      navigate('/')
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  useEffect(() => {
     if (!result) return
     const isSpectator = result.players && !result.players.includes(nickname)
     if (isSpectator) return

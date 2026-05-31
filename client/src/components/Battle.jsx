@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { sounds } from '../utils/sounds'
 
-const TURN_DURATION = 15
+const TURN_DURATION = 30
 
 export default function Battle() {
   const { roomId } = useParams()
@@ -32,6 +32,8 @@ export default function Battle() {
   const [isVoting, setIsVoting] = useState(false)
   const [endTurnPending, setEndTurnPending] = useState(false)
   const [spectators, setSpectators] = useState([])
+  const [isGameEnding, setIsGameEnding] = useState(false)
+  const [gameEndingCountdown, setGameEndingCountdown] = useState(10)
 
   const timerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
@@ -70,7 +72,6 @@ export default function Battle() {
       resetTimer()
     },
     'message-added': ({ nickname: sender, text, playerIndex }) => {
-      if (sender === nickname) return
       setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
     },
     'turn-update': ({ currentTurnIndex, currentNickname, turnCount, messages: serverMessages }) => {
@@ -94,8 +95,15 @@ export default function Battle() {
     'turn-timeout': ({ nickname: timedOutNick }) => {
       setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)
     },
-    'game-judging': () => {
+    'game-ending': () => {
       if (timerRef.current) clearInterval(timerRef.current)
+      setIsGameEnding(true)
+      setGameEndingCountdown(10)
+    },
+    'game-judging': () => {
+      setIsGameEnding(false)
+      if (timerRef.current) clearInterval(timerRef.current)
+      sounds.turnChange()
       setIsJudging(true)
     },
     'vote-start': ({ duration }) => {
@@ -169,30 +177,17 @@ export default function Battle() {
   })
 
   useEffect(() => {
-    if (sessionStorage.getItem('gameResult')) {
-      navigate(`/result/${roomId}`, { replace: true })
+    // 새로고침 감지 → 로비로 이동
+    const navType = performance.getEntriesByType('navigation')[0]?.type
+    if (navType === 'reload') {
+      sessionStorage.removeItem('gameData')
+      navigate('/')
       return
     }
 
-    const battleSession = sessionStorage.getItem('battleSession')
-
-    if (battleSession) {
-      try {
-        const session = JSON.parse(battleSession)
-        if (session.roomId === roomId && session.nickname === nickname) {
-          socket.emit('rejoin-room', { roomId, nickname })
-          const stored = sessionStorage.getItem('gameData')
-          if (stored) {
-            const data = JSON.parse(stored)
-            setPlayers(data.players || [])
-            setCurrentTurnIndex(data.currentTurnIndex ?? 0)
-            setCurrentNickname(data.currentNickname || '')
-            setTurnCount(data.turnCount ?? 0)
-            resetTimer()
-          }
-          return
-        }
-      } catch (_) { }
+    if (sessionStorage.getItem('gameResult')) {
+      navigate(`/result/${roomId}`, { replace: true })
+      return
     }
 
     const stored = sessionStorage.getItem('gameData')
@@ -208,13 +203,33 @@ export default function Battle() {
       navigate('/')
     }
 
+    // 뒤로가기 차단
+    window.history.pushState(null, '', window.location.href)
+    const onPop = () => {
+      window.history.pushState(null, '', window.location.href)
+      navigate('/')
+    }
+    window.addEventListener('popstate', onPop)
+
     return () => {
+      window.removeEventListener('popstate', onPop)
       if (timerRef.current) clearInterval(timerRef.current)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
       if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!isGameEnding) return
+    const t = setInterval(() => {
+      setGameEndingCountdown(prev => {
+        if (prev <= 1) { clearInterval(t); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [isGameEnding])
 
   useEffect(() => {
     if (timeLeft === 10) sounds.timerWarning()
@@ -257,6 +272,19 @@ export default function Battle() {
 
   const progress = (turnCount / totalTurns) * 100
   const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
+
+  if (isGameEnding) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🏁</div>
+          <h2 className="text-2xl font-black text-yellow-400 mb-2">게임 종료!</h2>
+          <p className="text-gray-400 mb-4">잠시 후 AI가 판정을 시작합니다</p>
+          <div className="text-5xl font-black text-white tabular-nums">{gameEndingCountdown}</div>
+        </div>
+      </div>
+    )
+  }
 
   if (isJudging) {
     const totalVotesNow = voteCount[0] + voteCount[1]
@@ -322,12 +350,7 @@ export default function Battle() {
             <span className="text-xs text-gray-500">주제</span>
             <span className="text-sm font-bold text-yellow-400 line-clamp-1 break-all">"{topic}"</span>
           </div>
-          <div className="flex items-center gap-2">
-            {spectators.length > 0 && (
-              <span className="text-xs text-gray-500">👁 {spectators.length}명</span>
-            )}
-            <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
-          </div>
+          <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
         </div>
         <div className="w-full bg-gray-800 rounded-full h-1.5">
           <div
@@ -362,6 +385,22 @@ export default function Battle() {
       {timeoutMsg && (
         <div className="bg-red-900/30 border border-red-700 rounded-lg px-3 py-2 mb-3 text-red-300 text-sm text-center">
           {timeoutMsg}
+        </div>
+      )}
+
+      {spectators.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
+          <span className="text-xs text-gray-500">👁 {spectators.length}명 관람 중</span>
+          <div className="flex -space-x-2">
+            {spectators.map((s, i) => (
+              <div key={i} title={s.nickname} className="w-7 h-7 rounded-full border-2 border-gray-900 overflow-hidden bg-gray-700 flex items-center justify-center">
+                {s.photoURL
+                  ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  : <span className="text-xs text-gray-400">👤</span>
+                }
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -434,9 +473,6 @@ export default function Battle() {
         </button>
       )}
 
-      <p className="text-center text-xs text-gray-600 mt-2">
-        {isMyTurn ? '⚡ 내 턴 — 킹받게 공격하라!' : '⏳ 상대방의 턴'}
-      </p>
     </div>
   )
 }

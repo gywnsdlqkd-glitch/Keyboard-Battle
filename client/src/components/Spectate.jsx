@@ -20,6 +20,8 @@ export default function Spectate() {
   const [totalTurns, setTotalTurns] = useState(0)
   const [timeLeft, setTimeLeft] = useState(TURN_DURATION)
   const [isJudging, setIsJudging] = useState(false)
+  const [isGameEnding, setIsGameEnding] = useState(false)
+  const [gameEndingCountdown, setGameEndingCountdown] = useState(10)
   const [timeoutMsg, setTimeoutMsg] = useState('')
   const [error, setError] = useState('')
 
@@ -87,7 +89,13 @@ export default function Spectate() {
     'turn-timeout': ({ nickname: timedOutNick }) => {
       setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)
     },
+    'game-ending': () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      setIsGameEnding(true)
+      setGameEndingCountdown(10)
+    },
     'game-judging': () => {
+      setIsGameEnding(false)
       if (timerRef.current) clearInterval(timerRef.current)
       setIsJudging(true)
     },
@@ -143,6 +151,17 @@ export default function Spectate() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    if (!isGameEnding) return
+    const t = setInterval(() => {
+      setGameEndingCountdown(prev => {
+        if (prev <= 1) { clearInterval(t); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [isGameEnding])
+
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
@@ -155,6 +174,19 @@ export default function Spectate() {
           >
             로비로 돌아가기
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isGameEnding) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🏁</div>
+          <h2 className="text-2xl font-black text-yellow-400 mb-2">게임 종료!</h2>
+          <p className="text-gray-400 mb-4">잠시 후 AI가 판정을 시작합니다</p>
+          <div className="text-5xl font-black text-white tabular-nums">{gameEndingCountdown}</div>
         </div>
       </div>
     )

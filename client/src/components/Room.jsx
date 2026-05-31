@@ -11,6 +11,7 @@ export default function Room() {
   const [opponent, setOpponent] = useState(sessionStorage.getItem('opponent') || null)
   const [countdown, setCountdown] = useState(null)
   const [botCountdown, setBotCountdown] = useState(null)
+  const [linkCopied, setLinkCopied] = useState(false)
   const gameStartedRef = useRef(false)
 
   const socket = useSocket({
@@ -61,7 +62,10 @@ export default function Room() {
   }, [botCountdown, opponent])
 
   function copyLink() {
-    navigator.clipboard.writeText(`${window.location.origin}/?room=${roomId}`)
+    navigator.clipboard.writeText(`${window.location.origin}/?room=${roomId}`).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
   }
 
   return (
@@ -76,9 +80,9 @@ export default function Room() {
 
           <button
             onClick={copyLink}
-            className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-2 rounded-lg text-sm transition"
+            className={`w-full font-black py-2 rounded-lg text-sm transition ${linkCopied ? 'bg-green-400 text-black' : 'bg-yellow-400 hover:bg-yellow-300 text-black'}`}
           >
-            🔗 초대 링크 복사
+            {linkCopied ? '🔗 복사됨! ✓' : '🔗 초대 링크 복사'}
           </button>
         </div>
 
