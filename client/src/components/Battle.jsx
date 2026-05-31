@@ -32,8 +32,6 @@ export default function Battle() {
   const [isVoting, setIsVoting] = useState(false)
   const [endTurnPending, setEndTurnPending] = useState(false)
   const [spectators, setSpectators] = useState([])
-  const [isGameEnding, setIsGameEnding] = useState(false)
-  const [gameEndingCountdown, setGameEndingCountdown] = useState(10)
 
   const timerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
@@ -95,13 +93,7 @@ export default function Battle() {
     'turn-timeout': ({ nickname: timedOutNick }) => {
       setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)
     },
-    'game-ending': () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      setIsGameEnding(true)
-      setGameEndingCountdown(10)
-    },
     'game-judging': () => {
-      setIsGameEnding(false)
       if (timerRef.current) clearInterval(timerRef.current)
       sounds.turnChange()
       setIsJudging(true)
@@ -136,7 +128,6 @@ export default function Battle() {
     },
     'opponent-left': () => {
       sessionStorage.removeItem('battleSession')
-      alert('상대방이 나갔습니다.')
       navigate('/')
     },
     'opponent-disconnected': () => {
@@ -224,17 +215,6 @@ export default function Battle() {
   }, [])
 
   useEffect(() => {
-    if (!isGameEnding) return
-    const t = setInterval(() => {
-      setGameEndingCountdown(prev => {
-        if (prev <= 1) { clearInterval(t); return 0 }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(t)
-  }, [isGameEnding])
-
-  useEffect(() => {
     if (timeLeft === 10) sounds.timerWarning()
     else if (timeLeft <= 5 && timeLeft > 0 && prevTimeLeft.current > timeLeft) sounds.timerCritical()
     prevTimeLeft.current = timeLeft
@@ -275,19 +255,7 @@ export default function Battle() {
 
   const progress = (turnCount / totalTurns) * 100
   const timerColor = timeLeft > 10 ? 'text-green-400' : timeLeft > 5 ? 'text-yellow-400' : 'text-red-400'
-
-  if (isGameEnding) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🏁</div>
-          <h2 className="text-2xl font-black text-yellow-400 mb-2">게임 종료!</h2>
-          <p className="text-gray-400 mb-4">잠시 후 AI가 판정을 시작합니다</p>
-          <div className="text-5xl font-black text-white tabular-nums">{gameEndingCountdown}</div>
-        </div>
-      </div>
-    )
-  }
+  const isLastTurn = turnCount + 1 >= totalTurns
 
   if (isJudging) {
     const totalVotesNow = voteCount[0] + voteCount[1]
@@ -468,11 +436,15 @@ export default function Battle() {
       {isMyTurn && !isJudging && (
         <button
           type="button"
-          onClick={handleEndTurn}
-          disabled={endTurnPending}
-          className={`w-full mt-2 border font-bold py-2 rounded-lg text-xs transition ${endTurnPending ? 'border-gray-800 text-gray-600 cursor-not-allowed' : 'border-gray-700 hover:border-yellow-400 text-gray-500 hover:text-yellow-400'}`}
+          onClick={isLastTurn ? undefined : handleEndTurn}
+          disabled={endTurnPending || isLastTurn}
+          className={`w-full mt-2 border font-bold py-2 rounded-lg text-xs transition ${
+            isLastTurn || endTurnPending
+              ? 'border-gray-800 text-gray-600 cursor-not-allowed'
+              : 'border-gray-700 hover:border-yellow-400 text-gray-500 hover:text-yellow-400'
+          }`}
         >
-          {endTurnPending ? '처리 중...' : '턴 종료 ▶'}
+          {isLastTurn ? '마지막 턴입니다.' : endTurnPending ? '처리 중...' : '턴 종료 ▶'}
         </button>
       )}
 

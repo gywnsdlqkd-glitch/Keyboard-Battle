@@ -131,6 +131,38 @@ function joinBotToRoom(room) {
   console.log(`AI봇 입장: ${room.id}`)
 }
 
+async function handleOpponentQuit(room, leavingNickname) {
+  const remainingPlayer = room.players.find(p => p.nickname !== leavingNickname)
+  io.to(room.id).emit('game-judging')
+  try {
+    const judgment = await judge(room.topic, room.players, room.messages)
+    const winner = remainingPlayer?.nickname || judgment.winner
+    const comment = judgment.comment + `\n\n[탈주 판정] ${leavingNickname}이(가) 게임 도중 나갔습니다. 탈주 플레이어는 자동 패배 처리됩니다.`
+    const remainingIsP1 = remainingPlayer?.nickname === room.players[0].nickname
+    const resultPayload = {
+      winner,
+      comment,
+      player1Score: remainingIsP1 ? 100 : 0,
+      player2Score: remainingIsP1 ? 0 : 100,
+      aiPlayer1Score: judgment.player1Score,
+      aiPlayer2Score: judgment.player2Score,
+      votePlayer1: 50,
+      votePlayer2: 50,
+      totalVotes: 0,
+      players: room.players.map(p => p.nickname),
+      messages: room.messages,
+      topic: room.topic,
+      bestMessage: judgment.bestMessage,
+    }
+    saveResult(room.id, resultPayload)
+    room.lastResult = resultPayload
+    room.state = 'done'
+    io.to(room.id).emit('game-result', resultPayload)
+  } catch {
+    io.to(room.id).emit('opponent-left')
+  }
+}
+
 async function handleTurnEnd(room, isTimeout = false) {
   if (room.timer) {
     clearTimeout(room.timer)
@@ -146,10 +178,6 @@ async function handleTurnEnd(room, isTimeout = false) {
   const result = nextTurn(room)
 
   if (result.finished) {
-    room.state = 'ending'
-    io.to(room.id).emit('game-ending')
-    await new Promise(r => setTimeout(r, 10000))
-
     io.to(room.id).emit('game-judging')
 
     // 투표 초기화
@@ -457,11 +485,12 @@ io.on('connection', socket => {
     if (room) {
       io.to(room.id).emit('opponent-disconnected')
 
-      const timer = setTimeout(() => {
+      const leavingNickname = room.players.find(p => p.id === socket.id)?.nickname
+      const timer = setTimeout(async () => {
         pendingDisconnects.delete(socket.id)
         const removedRoom = removePlayerFromRoom(socket.id)
         if (removedRoom) {
-          io.to(removedRoom.id).emit('opponent-left')
+          await handleOpponentQuit(removedRoom, leavingNickname)
           io.emit('room-list', getRoomList())
           io.emit('battling-list', getBattlingRoomList())
         }
