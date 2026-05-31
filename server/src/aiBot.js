@@ -19,19 +19,24 @@ function createModel() {
   })
 }
 
-export async function generateBotMessage(topic, messages) {
+export async function generateBotMessage(topic, messages, humanNickname) {
   const chatLog = messages.map(m => `[${m.nickname}]: ${m.text}`).join('\n')
-  const prompt = `너는 키보드 배틀 참가자야. 주제는 "${topic}"이고, 반드시 이 주제에 대해서만 말해야 해.
+  const opponentLine = humanNickname
+    ? `상대방(${humanNickname})이 지지하는 입장과 정반대 입장을 취하고, 그 입장을 끝까지 절대 바꾸지 마.`
+    : '뚜렷한 입장을 정하고 끝까지 고수해.'
+  const prompt = `너는 키보드 배틀 참가자야. 주제는 "${topic}"이야.
 
 지금까지 대화:
 ${chatLog || '(아직 대화 없음)'}
 
 지시사항:
-- 상대방의 마지막 주장을 정확히 파악하고, 그 논리적 약점이나 반례를 짚어 반박해
-- 근거나 예시를 한 가지 들어 주장을 강화해 (통계, 상식, 일반적 사례 등)
-- 한국어 반말로, 2-3문장 이내로 간결하게 써
-- 주제와 무관한 말은 절대 하지 마
-- 텍스트만 반환`
+- 반드시 주제 "${topic}"에 대해서만 말해. 주제와 무관한 말은 절대 하지 마.
+- ${opponentLine}
+- 대화가 있다면: 상대방의 마지막 주장을 정면으로 반박하고, 논리적 약점이나 반례를 짚어.
+- 대화가 없다면: 주제에 대한 뚜렷한 입장을 먼저 밝혀.
+- 근거나 예시를 한 가지 들어 주장을 강화해 (통계, 상식, 일반적 사례 등).
+- 한국어 반말로, 2-3문장 이내로 간결하게 써.
+- 텍스트만 반환.`
   try {
     const model = createModel()
     const result = await model.generateContent(prompt)

@@ -90,7 +90,19 @@ async function handleBotTurn(room) {
   const bot = room.players[room.currentTurnIndex]
   if (!bot?.isBot) return
 
-  const text = await generateBotMessage(room.topic, room.messages)
+  // 타이핑 표시 — 생성 시작 시 emit, 이후 2초마다 반복
+  io.to(room.id).emit('typing-indicator', { nickname: bot.nickname })
+  const typingInterval = setInterval(() => {
+    if (room.turnCount !== capturedTurnCount || room.state !== 'battling') {
+      clearInterval(typingInterval)
+      return
+    }
+    io.to(room.id).emit('typing-indicator', { nickname: bot.nickname })
+  }, 2000)
+
+  const text = await generateBotMessage(room.topic, room.messages, humanPlayer?.nickname)
+  clearInterval(typingInterval)
+
   if (room.state !== 'battling') return
   if (room.turnCount !== capturedTurnCount) return
 
