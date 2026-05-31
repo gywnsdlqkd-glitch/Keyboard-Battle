@@ -34,6 +34,9 @@ export default function Spectate() {
   const timerRef = useRef(null)
   const voteTimerRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const typingTimeoutRef = useRef(null)
+  const [isTyping, setIsTyping] = useState(false)
+  const [typingNickname, setTypingNickname] = useState('')
 
   function resetTimer() {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -90,6 +93,12 @@ export default function Spectate() {
     },
     'turn-timeout': ({ nickname: timedOutNick }) => {
       setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)
+    },
+    'typing-indicator': ({ nickname }) => {
+      setIsTyping(true)
+      setTypingNickname(nickname)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000)
     },
     'game-judging': () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -367,6 +376,11 @@ export default function Spectate() {
                 </div>
               )
             })}
+            {isTyping && (
+              <div className="flex justify-start">
+                <p className="text-xs text-gray-500 px-2 animate-pulse">✍️ {typingNickname} 입력 중...</p>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
