@@ -180,11 +180,6 @@ async function handleTurnEnd(room, isTimeout = false) {
   if (result.finished) {
     io.to(room.id).emit('game-judging')
 
-    // 투표 초기화
-    room.votes = []
-    room.voteOpen = true
-    room.votedSocketIds = new Set()
-
     io.to(room.id).emit('vote-start', {
       players: room.players.map(p => p.nickname),
       duration: VOTE_DURATION_MS,
@@ -422,6 +417,12 @@ io.on('connection', socket => {
     }
     addSpectator(room, socket.id, nickname || '익명', photoURL || null)
     socket.join(room.id)
+    const initVotedProfiles = [0, 1].map(pidx =>
+      (room.votes || []).filter(v => v.playerIndex === pidx).map(v => {
+        const s = room.spectators.find(sp => sp.id === v.socketId)
+        return s ? { nickname: s.nickname, photoURL: s.photoURL } : null
+      }).filter(Boolean)
+    )
     socket.emit('spectate-state', {
       players: room.players.map(p => p.nickname),
       topic: room.topic,
@@ -432,6 +433,12 @@ io.on('connection', socket => {
       totalTurns: TURNS_PER_PLAYER * 2,
       state: room.state,
       spectators: room.spectators.map(s => ({ nickname: s.nickname, photoURL: s.photoURL })),
+      voteOpen: !!room.voteOpen,
+      voteCount: [
+        (room.votes || []).filter(v => v.playerIndex === 0).length,
+        (room.votes || []).filter(v => v.playerIndex === 1).length,
+      ],
+      votedProfiles: initVotedProfiles,
     })
     io.to(room.id).emit('spectator-list', room.spectators.map(s => ({ nickname: s.nickname, photoURL: s.photoURL })))
     if (room.state === 'done' && room.lastResult) {

@@ -77,7 +77,7 @@ export default function Lobby() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <h1 className="text-4xl sm:text-5xl font-black text-center mb-2 text-yellow-400 tracking-tight">
+        <h1 className="text-3xl sm:text-5xl font-black text-center mb-2 text-yellow-400 tracking-tight whitespace-nowrap">
           ⌨️ Keyboard Battle
         </h1>
         <p className="text-center text-gray-400 mb-2 text-sm">
@@ -140,7 +140,7 @@ export default function Lobby() {
               className={`flex-1 py-2 text-sm font-bold transition ${tab === 'create' ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
               onClick={() => setTab('create')}
             >
-              방 만들기
+              방 개설
             </button>
             <button
               className={`flex-1 py-2 text-sm font-bold transition ${tab === 'join' ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
@@ -173,7 +173,7 @@ export default function Lobby() {
                 type="submit"
                 className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3 rounded-lg text-lg transition"
               >
-                방 개설
+                게임 시작하기
               </button>
             </form>
           ) : (

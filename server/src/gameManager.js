@@ -67,6 +67,9 @@ export function startGame(room) {
   room.state = 'battling'
   room.currentTurnIndex = 0
   room.turnCount = 0
+  room.voteOpen = true
+  room.votes = []
+  room.votedSocketIds = new Set()
 }
 
 export function addMessage(room, socketId, text) {

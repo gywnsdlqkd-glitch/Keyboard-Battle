@@ -375,6 +375,25 @@ export default function Battle() {
         </div>
       )}
 
+      {(voteCount[0] > 0 || voteCount[1] > 0) && (() => {
+        const total = voteCount[0] + voteCount[1]
+        const p0 = Math.round(voteCount[0] / total * 100)
+        const p1 = 100 - p0
+        return (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-3">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-yellow-400 font-bold">{players[0]} {p0}%</span>
+              <span className="text-gray-500">관람자 여론</span>
+              <span className="text-red-400 font-bold">{p1}% {players[1]}</span>
+            </div>
+            <div className="flex h-2 rounded-full overflow-hidden bg-gray-800">
+              <div className="bg-yellow-400 h-full transition-all duration-500" style={{ width: `${p0}%` }} />
+              <div className="bg-red-400 h-full transition-all duration-500" style={{ width: `${p1}%` }} />
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100dvh-320px)]">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center">

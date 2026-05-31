@@ -25,6 +25,7 @@ export default function Spectate() {
 
   // 투표 상태
   const [isVoting, setIsVoting] = useState(false)
+  const [canVote, setCanVote] = useState(false)
   const [myVote, setMyVote] = useState(null)
   const [voteCount, setVoteCount] = useState([0, 0])
   const [votedProfiles, setVotedProfiles] = useState([[], []])
@@ -49,13 +50,13 @@ export default function Spectate() {
   }
 
   function handleVote(playerIndex) {
-    if (!isVoting) return
+    if (!canVote) return
     setMyVote(playerIndex)
     socket.emit('submit-vote', { roomId, playerIndex })
   }
 
   const socket = useSocket({
-    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, state, spectators: initSpectators }) => {
+    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, state, spectators: initSpectators, voteOpen, voteCount: initVoteCount, votedProfiles: initVotedProfiles }) => {
       setPlayers(players)
       setTopic(topic)
       setMessages(messages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
@@ -64,6 +65,9 @@ export default function Spectate() {
       setTurnCount(turnCount)
       if (tt) setTotalTurns(tt)
       setSpectators(initSpectators || [])
+      if (voteOpen) setCanVote(true)
+      if (initVoteCount) setVoteCount(initVoteCount)
+      if (initVotedProfiles) setVotedProfiles(initVotedProfiles)
       if (state === 'judging') {
         setIsJudging(true)
       } else {
@@ -94,6 +98,7 @@ export default function Spectate() {
     'vote-start': ({ players: votePlayers, duration }) => {
       setPlayers(votePlayers)
       setIsVoting(true)
+      setCanVote(true)
       setVoteTimeLeft(Math.ceil(duration / 1000))
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
       voteTimerRef.current = setInterval(() => {
@@ -112,6 +117,7 @@ export default function Spectate() {
     },
     'vote-closed': () => {
       setIsVoting(false)
+      setCanVote(false)
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
     },
     'game-result': (result) => {
@@ -232,7 +238,7 @@ export default function Spectate() {
           </div>
 
           {/* 투표 버튼 */}
-          {isVoting && (
+          {canVote && (
             <>
               <p className="text-gray-400 text-xs text-center mb-2">누가 더 킹받게 쳤나요?</p>
               <div className="flex gap-3">
@@ -333,6 +339,25 @@ export default function Spectate() {
           </div>
         </div>
       )}
+
+      {(voteCount[0] > 0 || voteCount[1] > 0) && (() => {
+        const total = voteCount[0] + voteCount[1]
+        const p0 = Math.round(voteCount[0] / total * 100)
+        const p1 = 100 - p0
+        return (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-3">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-yellow-400 font-bold">{players[0]} {p0}%</span>
+              <span className="text-gray-500">관람자 여론</span>
+              <span className="text-red-400 font-bold">{p1}% {players[1]}</span>
+            </div>
+            <div className="flex h-2 rounded-full overflow-hidden bg-gray-800">
+              <div className="bg-yellow-400 h-full transition-all duration-500" style={{ width: `${p0}%` }} />
+              <div className="bg-red-400 h-full transition-all duration-500" style={{ width: `${p1}%` }} />
+            </div>
+          </div>
+        )
+      })()}
 
       <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100vh-280px)]">
         {messages.length === 0 ? (
