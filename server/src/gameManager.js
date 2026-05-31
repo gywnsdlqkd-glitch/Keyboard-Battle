@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 
-const TURNS_PER_PLAYER = 2   // 총 4턴 (2 * 2). 변경하려면 이 값만 수정
+const TURNS_PER_PLAYER = 5   // 총 10턴 (5 * 2). 변경하려면 이 값만 수정
 const TURN_DURATION_MS = 15000
 
 const rooms = new Map()
