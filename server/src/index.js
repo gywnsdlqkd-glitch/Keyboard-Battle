@@ -26,6 +26,7 @@ import {
   TURNS_PER_PLAYER,
 } from './gameManager.js'
 import { judge } from './aiJudge.js'
+import { BOT_NICKNAME, generateBotMessage } from './aiBot.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -41,6 +42,8 @@ const io = new Server(httpServer, {
 
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
+
+const BOT_JOIN_DELAY_MS = 10 * 1000  // 봇 참여 대기 시간
 
 // 투표/판정 비중 설정 (합계 1.0)
 const VOTE_DURATION_MS = 15000   // 관람자 투표 창 15초
@@ -62,6 +65,54 @@ function startTurnTimer(room) {
   room.timer = setTimeout(() => {
     handleTurnEnd(room, true)
   }, TURN_DURATION_MS)
+
+  const currentPlayer = room.players[room.currentTurnIndex]
+  if (currentPlayer?.isBot) handleBotTurn(room)
+}
+
+async function handleBotTurn(room) {
+  await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000))
+  if (room.state !== 'battling') return
+  const humanPlayer = room.players.find(p => !p.isBot)
+  if (humanPlayer?.disconnected) return
+
+  const bot = room.players[room.currentTurnIndex]
+  if (!bot?.isBot) return
+
+  const text = await generateBotMessage(room.topic, room.messages)
+  if (room.state !== 'battling') return
+
+  room.messages.push({ nickname: bot.nickname, text, turn: room.turnCount, playerIndex: room.currentTurnIndex })
+  io.to(room.id).emit('message-added', { nickname: bot.nickname, text, playerIndex: room.currentTurnIndex })
+
+  await new Promise(r => setTimeout(r, 800))
+  if (room.state === 'battling') handleTurnEnd(room)
+}
+
+function joinBotToRoom(room) {
+  if (room.players.length !== 1 || room.state !== 'waiting') return
+  const botId = `bot-${room.id}`
+  room.players.push({ id: botId, nickname: BOT_NICKNAME, isBot: true })
+  io.to(room.id).emit('player-joined', { nickname: BOT_NICKNAME })
+  io.emit('room-list', getRoomList())
+  ;[3, 2, 1].forEach((n, i) =>
+    setTimeout(() => io.to(room.id).emit('countdown', { count: n }), i * 1000)
+  )
+  setTimeout(() => {
+    startGame(room)
+    io.to(room.id).emit('game-start', {
+      players: room.players.map(p => p.nickname),
+      topic: room.topic,
+      currentTurnIndex: 0,
+      currentNickname: room.players[0].nickname,
+      turnCount: 0,
+      totalTurns: TURNS_PER_PLAYER * 2,
+    })
+    io.emit('room-list', getRoomList())
+    io.emit('battling-list', getBattlingRoomList())
+    startTurnTimer(room)
+  }, 3000)
+  console.log(`AI봇 입장: ${room.id}`)
 }
 
 async function handleTurnEnd(room, isTimeout = false) {
@@ -182,6 +233,7 @@ io.on('connection', socket => {
     })
 
     io.emit('room-list', getRoomList())
+    room.botJoinTimer = setTimeout(() => joinBotToRoom(room), BOT_JOIN_DELAY_MS)
     console.log(`방 생성: ${room.id} | 주제: ${topic} | 방장: ${nickname}`)
   })
 
@@ -196,6 +248,7 @@ io.on('connection', socket => {
     }
 
     const room = result.room
+    if (room.botJoinTimer) { clearTimeout(room.botJoinTimer); room.botJoinTimer = null }
     socket.join(room.id)
 
     socket.to(room.id).emit('player-joined', { nickname: nickname.trim() })
@@ -387,6 +440,7 @@ io.on('connection', socket => {
     } else {
       const removedRoom = removePlayerFromRoom(socket.id)
       if (removedRoom) {
+        if (removedRoom.botJoinTimer) clearTimeout(removedRoom.botJoinTimer)
         io.to(removedRoom.id).emit('opponent-left')
         io.emit('room-list', getRoomList())
         io.emit('battling-list', getBattlingRoomList())

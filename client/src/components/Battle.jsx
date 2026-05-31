@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { sounds } from '../utils/sounds'
 
-const TURN_DURATION = 30
+const TURN_DURATION = 15
 
 export default function Battle() {
   const { roomId } = useParams()
@@ -183,7 +183,7 @@ export default function Battle() {
           }
           return
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     const stored = sessionStorage.getItem('gameData')
@@ -255,7 +255,7 @@ export default function Battle() {
         <div className="text-center w-full max-w-sm">
           <div className="text-6xl mb-4 animate-bounce">⚖️</div>
           <h2 className="text-2xl font-black text-yellow-400 mb-2">AI 판정 중...</h2>
-          <p className="text-gray-400 mb-6">Gemini가 배틀 로그를 분석하고 있습니다</p>
+          <p className="text-gray-400 mb-6">AI가 배틀 로그를 분석하고 있습니다</p>
           <div className="flex justify-center gap-1 mb-8">
             {[0, 1, 2].map(i => (
               <div
@@ -363,11 +363,10 @@ export default function Battle() {
               const isMine = msg.playerIndex === myPlayerIndex
               return (
                 <div key={i} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                    isMine
-                      ? 'bg-yellow-400 text-black rounded-br-sm'
-                      : 'bg-gray-800 text-white rounded-bl-sm'
-                  }`}>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMine
+                    ? 'bg-yellow-400 text-black rounded-br-sm'
+                    : 'bg-gray-800 text-white rounded-bl-sm'
+                    }`}>
                     {!isMine && (
                       <p className="text-xs text-gray-400 mb-0.5 font-bold">{msg.nickname}</p>
                     )}

@@ -1,20 +1,50 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, getCountFromServer, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useAuth } from '../contexts/AuthContext'
+
+const LEADERBOARD_LIMIT = 10
 
 export default function Leaderboard() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [myRecord, setMyRecord] = useState(null)
 
   useEffect(() => {
-    const q = query(collection(db, 'users'), orderBy('wins', 'desc'), limit(50))
+    const q = query(collection(db, 'users'), orderBy('wins', 'desc'), limit(LEADERBOARD_LIMIT))
     getDocs(q)
-      .then(snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .then(async snap => {
+        const topUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setUsers(topUsers)
+
+        if (user) {
+          const isInTop = topUsers.some(u => u.id === user.uid)
+          if (!isInTop) {
+            const myDoc = await getDoc(doc(db, 'users', user.uid))
+            if (myDoc.exists()) {
+              const data = myDoc.data()
+              const rankSnap = await getCountFromServer(
+                query(collection(db, 'users'), where('wins', '>', data.wins ?? 0))
+              )
+              setMyRecord({ ...data, rank: rankSnap.data().count + 1 })
+            } else {
+              setMyRecord({ noRecord: true, nickname: user.displayName, photoURL: user.photoURL })
+            }
+          }
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [user])
+
+  function winRate(u) {
+    const wins = u.wins ?? 0
+    const total = u.totalGames ?? wins + (u.losses ?? 0) + (u.draws ?? 0)
+    return total > 0 ? Math.round((wins / total) * 100) + '%' : '0%'
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
@@ -39,7 +69,7 @@ export default function Leaderboard() {
                 ))}
               </div>
             </div>
-          ) : users.length === 0 ? (
+          ) : users.length === 0 && !myRecord ? (
             <p className="text-center text-gray-500 py-12">아직 전적이 없습니다.</p>
           ) : (
             <table className="w-full">
@@ -58,8 +88,6 @@ export default function Leaderboard() {
                   const wins = u.wins ?? 0
                   const losses = u.losses ?? 0
                   const draws = u.draws ?? 0
-                  const total = u.totalGames ?? wins + losses + draws
-                  const winRate = total > 0 ? Math.round((wins / total) * 100) : 0
                   const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
                   return (
                     <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
@@ -85,10 +113,48 @@ export default function Leaderboard() {
                       <td className="px-2 py-3 text-center text-sm font-bold text-yellow-400">{wins}</td>
                       <td className="px-2 py-3 text-center text-sm text-gray-400">{losses}</td>
                       <td className="px-2 py-3 text-center text-sm text-gray-500">{draws}</td>
-                      <td className="px-4 py-3 text-center text-sm font-bold text-white">{winRate}%</td>
+                      <td className="px-4 py-3 text-center text-sm font-bold text-white">{winRate(u)}</td>
                     </tr>
                   )
                 })}
+
+                {myRecord && (
+                  <>
+                    <tr>
+                      <td colSpan={6} className="px-4 py-1">
+                        <div className="border-t border-dashed border-gray-700" />
+                      </td>
+                    </tr>
+                    <tr className="bg-yellow-400/5">
+                      <td className="px-4 py-3 text-center">
+                        {myRecord.noRecord
+                          ? <span className="text-sm text-gray-500">-</span>
+                          : <span className="text-sm text-gray-400">{myRecord.rank}</span>
+                        }
+                      </td>
+                      <td className="px-2 py-3">
+                        <div className="flex items-center gap-2">
+                          {myRecord.photoURL ? (
+                            <img src={myRecord.photoURL} alt="" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center text-black font-black text-xs">
+                              {myRecord.nickname?.charAt(0)?.toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-sm font-bold text-yellow-300 truncate max-w-[120px]">
+                            {myRecord.nickname} <span className="text-xs text-gray-500 font-normal">(나)</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-3 text-center text-sm font-bold text-yellow-400">{myRecord.wins ?? 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-400">{myRecord.losses ?? 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-500">{myRecord.draws ?? 0}</td>
+                      <td className="px-4 py-3 text-center text-sm font-bold text-white">
+                        {myRecord.noRecord ? '-' : winRate(myRecord)}
+                      </td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
           )}
