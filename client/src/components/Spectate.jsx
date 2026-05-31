@@ -130,7 +130,7 @@ export default function Spectate() {
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
     },
     'game-result': (result) => {
-      sessionStorage.setItem('gameResult', JSON.stringify(result))
+      sessionStorage.setItem('gameResult', JSON.stringify({ ...result, _isSpectator: true }))
       navigate(`/result/${roomId}`)
     },
     'watch-error': ({ message }) => {

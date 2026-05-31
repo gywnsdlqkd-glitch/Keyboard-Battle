@@ -42,7 +42,7 @@ export default function Result() {
 
   useEffect(() => {
     if (!result) return
-    const isSpectator = result.players && !result.players.includes(nickname)
+    const isSpectator = result._isSpectator || (result.players && !result.players.includes(nickname))
     if (isSpectator) return
     const p1Score = result.player1Score ?? 50
     const p2Score = result.player2Score ?? 50
@@ -54,7 +54,7 @@ export default function Result() {
 
   useEffect(() => {
     if (!result || !user || statsWritten.current) return
-    const isSpectator = result.players && !result.players.includes(nickname)
+    const isSpectator = result._isSpectator || (result.players && !result.players.includes(nickname))
     if (isSpectator) return
     statsWritten.current = true
 
@@ -107,7 +107,7 @@ export default function Result() {
   const p1Score = result.player1Score ?? 50
   const p2Score = result.player2Score ?? 50
   const isDraw = p1Score === p2Score
-  const isSpectator = result.players && !result.players.includes(nickname)
+  const isSpectator = result._isSpectator || (result.players && !result.players.includes(nickname))
   const isWinner = !isSpectator && !isDraw && result.winner === nickname
 
   const emoji = isSpectator ? '👁' : (isDraw ? '🤝' : isWinner ? '🏆' : '💀')
