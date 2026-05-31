@@ -352,7 +352,10 @@ io.on('connection', socket => {
   socket.on('end-turn', () => {
     const room = getRoomBySocketId(socket.id)
     if (!room || room.state !== 'battling') return
-    if (room.players[room.currentTurnIndex].id !== socket.id) return
+    if (room.players[room.currentTurnIndex].id !== socket.id) {
+      socket.emit('end-turn-rejected')
+      return
+    }
     handleTurnEnd(room)
   })
 

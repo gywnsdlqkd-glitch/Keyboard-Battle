@@ -79,9 +79,11 @@ export default function Battle() {
       setTimeoutMsg('')
       setIsOpponentTyping(false)
       setEndTurnPending(false)
-      if (serverMessages?.length) {
-        setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
-      }
+      setMessages(prev => {
+        if (!serverMessages?.length) return prev
+        if (serverMessages.length < prev.length) return prev
+        return serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex }))
+      })
       sounds.turnChange()
       resetTimer()
       const existing = JSON.parse(sessionStorage.getItem('gameData') || '{}')
@@ -112,6 +114,10 @@ export default function Battle() {
     'vote-closed': () => {
       setIsVoting(false)
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
+    },
+    'end-turn-rejected': () => {
+      if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
+      setEndTurnPending(false)
     },
     'game-result': (result) => {
       sessionStorage.removeItem('battleSession')
