@@ -74,10 +74,13 @@ export default function Spectate() {
     'message-added': ({ nickname: sender, text, playerIndex }) => {
       setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
     },
-    'turn-update': ({ currentTurnIndex, currentNickname, turnCount }) => {
+    'turn-update': ({ currentTurnIndex, currentNickname, turnCount, messages: serverMessages }) => {
       setCurrentTurnIndex(currentTurnIndex)
       setCurrentNickname(currentNickname)
       setTurnCount(turnCount)
+      if (serverMessages?.length > 0) {
+        setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
+      }
       setTimeoutMsg('')
       resetTimer()
     },
