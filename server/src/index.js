@@ -43,7 +43,7 @@ const io = new Server(httpServer, {
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
 
-const BOT_JOIN_DELAY_MS = 10 * 1000       // 봇 참여 대기 시간
+const BOT_JOIN_DELAY_MS = 30 * 1000       // 봇 참여 대기 시간
 const BOT_LAST_TURN_DELAY_MS = 5 * 1000  // 봇 마지막 턴 후 읽기 대기 시간
 
 // 투표/판정 비중 설정 (합계 1.0)
@@ -242,6 +242,7 @@ io.on('connection', socket => {
 
     io.emit('room-list', getRoomList())
     room.botJoinTimer = setTimeout(() => joinBotToRoom(room), BOT_JOIN_DELAY_MS)
+    socket.emit('bot-timer-started', { delay: BOT_JOIN_DELAY_MS })
     console.log(`방 생성: ${room.id} | 주제: ${topic} | 방장: ${nickname}`)
   })
 

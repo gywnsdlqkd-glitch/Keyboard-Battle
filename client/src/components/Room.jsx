@@ -10,6 +10,7 @@ export default function Room() {
   const isHost = sessionStorage.getItem('isHost') === 'true'
   const [opponent, setOpponent] = useState(sessionStorage.getItem('opponent') || null)
   const [countdown, setCountdown] = useState(null)
+  const [botCountdown, setBotCountdown] = useState(null)
 
   const socket = useSocket({
     'player-joined': ({ nickname: opponentNick }) => {
@@ -18,6 +19,9 @@ export default function Room() {
     },
     'countdown': ({ count }) => {
       setCountdown(count)
+    },
+    'bot-timer-started': ({ delay }) => {
+      setBotCountdown(Math.floor(delay / 1000))
     },
     'game-start': (gameData) => {
       sessionStorage.setItem('gameData', JSON.stringify(gameData))
@@ -32,6 +36,12 @@ export default function Room() {
   useEffect(() => {
     if (!nickname || !topic) navigate('/')
   }, [nickname, topic, navigate])
+
+  useEffect(() => {
+    if (botCountdown === null || botCountdown <= 0 || opponent) return
+    const t = setTimeout(() => setBotCountdown(c => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [botCountdown, opponent])
 
   function copyCode() {
     navigator.clipboard.writeText(roomId)
@@ -93,7 +103,14 @@ export default function Room() {
                   <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
                     <div className="w-3 h-3 rounded-full bg-gray-500 animate-pulse" />
                   </div>
-                  <span className="text-gray-500">상대방 대기 중...</span>
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">상대방 대기 중...</span>
+                    {botCountdown !== null && (
+                      <span className="text-xs text-gray-600">
+                        {botCountdown > 0 ? `${botCountdown}초 후 AI 자동 입장` : 'AI 입장 중...'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </>
