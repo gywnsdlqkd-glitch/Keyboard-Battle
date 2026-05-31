@@ -111,7 +111,8 @@ async function handleBotTurn(room) {
 
   await new Promise(r => setTimeout(r, 800))
   if (room.turnCount !== capturedTurnCount) return
-  if (room.state === 'battling') handleTurnEnd(room)
+  const isLastTurn = room.turnCount + 1 >= TURNS_PER_PLAYER * 2
+  if (room.state === 'battling' && !isLastTurn) handleTurnEnd(room)
 }
 
 function joinBotToRoom(room) {
