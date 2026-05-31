@@ -57,6 +57,8 @@ ${chatLog}
 규칙:
 - bestMessage는 반드시 위 채팅 기록에 있는 메시지 원문 중 하나를 그대로 인용해야 한다.
 - 채팅 기록에 없는 내용은 절대 만들거나 변형하지 않는다.
+- winner는 반드시 player1Score와 player2Score 중 더 높은 점수를 받은 플레이어여야 한다. player1Score가 높으면 winner는 ${players[0].nickname}, player2Score가 높으면 winner는 ${players[1].nickname}.
+- comment의 평가 내용도 반드시 점수가 높은 플레이어를 긍정적으로 묘사해야 한다.
 
 JSON으로만 답해:
 {"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"채팅 기록 중 실제 메시지 원문, 없으면 빈 문자열"}`

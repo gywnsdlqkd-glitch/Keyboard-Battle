@@ -169,9 +169,13 @@ async function handleTurnEnd(room, isTimeout = false) {
 
     const finalScore0 = Math.round(AI_RESULT_WEIGHT * judgment.player1Score + VOTE_RESULT_WEIGHT * voteScore0)
     const finalScore1 = Math.round(AI_RESULT_WEIGHT * judgment.player2Score + VOTE_RESULT_WEIGHT * voteScore1)
+    // AI 점수 기반으로 winner 재검증 (AI가 winner 필드와 점수를 불일치하게 반환하는 케이스 방어)
+    const scoreBasedWinner = judgment.player1Score >= judgment.player2Score
+      ? room.players[0].nickname
+      : room.players[1].nickname
     const finalWinner = finalScore0 > finalScore1 ? room.players[0].nickname
                       : finalScore1 > finalScore0 ? room.players[1].nickname
-                      : judgment.winner
+                      : scoreBasedWinner
 
     let voteCommentLine
     if (totalVotes === 0) {
