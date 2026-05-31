@@ -388,7 +388,30 @@ export default function Spectate() {
         )}
       </div>
 
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 text-center">
+      {canVote && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 mt-3">
+          <p className="text-gray-400 text-xs text-center mb-2">누가 더 킹받게 쳤나요?</p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleVote(0)}
+              className={`flex-1 active:scale-95 font-black py-3 rounded-xl text-sm transition ${myVote === 0 ? 'bg-yellow-400 text-black' : 'bg-yellow-400/20 text-yellow-400 hover:bg-yellow-400/40'}`}
+            >
+              {players[0]}{myVote === 0 && ' ✓'}
+            </button>
+            <button
+              onClick={() => handleVote(1)}
+              className={`flex-1 active:scale-95 font-black py-3 rounded-xl text-sm transition ${myVote === 1 ? 'bg-red-400 text-black' : 'bg-red-400/20 text-red-400 hover:bg-red-400/40'}`}
+            >
+              {players[1]}{myVote === 1 && ' ✓'}
+            </button>
+          </div>
+          {myVote !== null && (
+            <p className="text-gray-500 text-xs text-center mt-2">투표 완료 (변경 가능)</p>
+          )}
+        </div>
+      )}
+
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 text-center mt-3">
         <p className="text-gray-500 text-sm">
           {currentNickname ? `⚡ ${currentNickname}의 턴` : '대기 중...'}
         </p>
