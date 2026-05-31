@@ -4,15 +4,21 @@ import { sounds } from '../utils/sounds'
 import { TURN_DURATION, TYPING_TIMEOUT_MS, END_TURN_TIMEOUT_MS } from '../constants'
 
 export function useBattleSocket({ roomId, nickname, navigate, resetTimer, startVoteTimer, stopVoteTimer, stopTimer }) {
+  // game-start 이벤트는 Room.jsx에서 수신되므로 Battle.jsx 마운트 시점엔 이미 지남.
+  // sessionStorage.gameData로 초기 상태를 복원한다.
+  const storedGame = (() => {
+    try { return JSON.parse(sessionStorage.getItem('gameData') || 'null') } catch { return null }
+  })()
+
   const [myPlayerIndex, setMyPlayerIndex] = useState(
     parseInt(sessionStorage.getItem('playerIndex') ?? '0', 10)
   )
   const [messages, setMessages] = useState([])
-  const [currentTurnIndex, setCurrentTurnIndex] = useState(0)
-  const [currentNickname, setCurrentNickname] = useState('')
-  const [players, setPlayers] = useState([])
-  const [turnCount, setTurnCount] = useState(0)
-  const [totalTurns, setTotalTurns] = useState(0)
+  const [currentTurnIndex, setCurrentTurnIndex] = useState(storedGame?.currentTurnIndex ?? 0)
+  const [currentNickname, setCurrentNickname] = useState(storedGame?.currentNickname || '')
+  const [players, setPlayers] = useState(storedGame?.players || [])
+  const [turnCount, setTurnCount] = useState(storedGame?.turnCount ?? 0)
+  const [totalTurns, setTotalTurns] = useState(storedGame?.totalTurns || 0)
   const [isJudging, setIsJudging] = useState(false)
   const [timeoutMsg, setTimeoutMsg] = useState('')
   const [opponentDisconnected, setOpponentDisconnected] = useState(false)
