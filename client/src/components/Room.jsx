@@ -60,10 +60,6 @@ export default function Room() {
     return () => clearTimeout(t)
   }, [botCountdown, opponent])
 
-  function copyCode() {
-    navigator.clipboard.writeText(roomId)
-  }
-
   function copyLink() {
     navigator.clipboard.writeText(`${window.location.origin}/?room=${roomId}`)
   }
@@ -78,16 +74,6 @@ export default function Room() {
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">배틀 주제</p>
           <p className="text-xl font-bold text-white mb-5 line-clamp-2 break-all">"{topic}"</p>
 
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">방 코드</p>
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="text-3xl font-black text-yellow-400 tracking-widest">{roomId}</span>
-            <button
-              onClick={copyCode}
-              className="text-xs text-gray-400 hover:text-yellow-400 transition border border-gray-700 rounded px-2 py-1"
-            >
-              복사
-            </button>
-          </div>
           <button
             onClick={copyLink}
             className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-2 rounded-lg text-sm transition"
