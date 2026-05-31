@@ -346,6 +346,26 @@ export default function Spectate() {
         </div>
       )}
 
+      {spectators.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
+          <span className="text-xs text-gray-500">👁 {spectators.length}명 관람 중</span>
+          <div className="flex -space-x-2">
+            {spectators.map((s, i) => (
+              <div
+                key={i}
+                title={s.nickname}
+                className="w-7 h-7 rounded-full border-2 border-gray-900 overflow-hidden bg-gray-700 flex items-center justify-center"
+              >
+                {s.photoURL
+                  ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  : <span className="text-xs text-gray-400">👤</span>
+                }
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100vh-280px)]">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
@@ -374,25 +394,6 @@ export default function Spectate() {
           </div>
         )}
       </div>
-
-      {spectators.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
-          <span className="text-xs text-gray-500">👁 {spectators.length}명 관람 중</span>
-          <div className="flex -space-x-2">
-            {spectators.map((s, i) => (
-              <div
-                key={i}
-                title={s.nickname}
-                className="w-7 h-7 rounded-full border-2 border-gray-900 overflow-hidden bg-gray-700 flex items-center justify-center"
-              >
-                {s.photoURL
-                  ? <img src={s.photoURL} alt={s.nickname} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  : <span className="text-xs text-gray-400">👤</span>
-                }
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-3 text-center">
