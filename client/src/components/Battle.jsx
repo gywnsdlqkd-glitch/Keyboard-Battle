@@ -31,6 +31,7 @@ export default function Battle() {
   const [voteTimeLeft, setVoteTimeLeft] = useState(0)
   const [isVoting, setIsVoting] = useState(false)
   const [endTurnPending, setEndTurnPending] = useState(false)
+  const [spectators, setSpectators] = useState([])
 
   const timerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
@@ -69,7 +70,7 @@ export default function Battle() {
       resetTimer()
     },
     'message-added': ({ nickname: sender, text, playerIndex }) => {
-      if (playerIndex === myPlayerIndex) return
+      if (sender === nickname) return
       setMessages(prev => [...prev, { nickname: sender, text, playerIndex }])
     },
     'turn-update': ({ currentTurnIndex, currentNickname, turnCount, messages: serverMessages }) => {
@@ -159,6 +160,7 @@ export default function Battle() {
       alert(`재접속 실패: ${message}`)
       navigate('/')
     },
+    'spectator-list': (list) => setSpectators(list),
     'typing-indicator': () => {
       setIsOpponentTyping(true)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
@@ -320,7 +322,12 @@ export default function Battle() {
             <span className="text-xs text-gray-500">주제</span>
             <span className="text-sm font-bold text-yellow-400 line-clamp-1 break-all">"{topic}"</span>
           </div>
-          <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
+          <div className="flex items-center gap-2">
+            {spectators.length > 0 && (
+              <span className="text-xs text-gray-500">👁 {spectators.length}명</span>
+            )}
+            <span className="text-xs text-gray-500">{turnCount}/{totalTurns}턴</span>
+          </div>
         </div>
         <div className="w-full bg-gray-800 rounded-full h-1.5">
           <div
