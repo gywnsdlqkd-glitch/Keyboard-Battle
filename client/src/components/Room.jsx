@@ -27,6 +27,7 @@ export default function Room() {
     },
     'game-start': (gameData) => {
       gameStartedRef.current = true
+      sessionStorage.setItem('freshBattleEntry', 'true')
       sessionStorage.setItem('gameData', JSON.stringify(gameData))
       navigate(`/battle/${roomId}`)
     },

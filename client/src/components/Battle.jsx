@@ -177,9 +177,12 @@ export default function Battle() {
   })
 
   useEffect(() => {
-    // 새로고침 감지 → 로비로 이동
-    const navType = performance.getEntriesByType('navigation')[0]?.type
-    if (navType === 'reload') {
+    // freshBattleEntry 플래그로 정상 진입(Room.jsx game-start 경유) 여부 판단
+    const isFreshEntry = sessionStorage.getItem('freshBattleEntry') === 'true'
+    sessionStorage.removeItem('freshBattleEntry')
+
+    if (!isFreshEntry) {
+      // 새로고침 또는 직접 URL 접근 → 로비로
       sessionStorage.removeItem('gameData')
       navigate('/')
       return
