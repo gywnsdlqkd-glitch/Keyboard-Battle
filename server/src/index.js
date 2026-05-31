@@ -159,7 +159,21 @@ async function handleOpponentQuit(room, leavingNickname) {
     room.state = 'done'
     io.to(room.id).emit('game-result', resultPayload)
   } catch {
-    io.to(room.id).emit('opponent-left')
+    const remainingIsP1 = remainingPlayer?.nickname === room.players[0].nickname
+    const fallbackPayload = {
+      winner: remainingPlayer?.nickname || room.players[0].nickname,
+      comment: `[탈주 판정] ${leavingNickname}이(가) 게임 도중 나갔습니다. 탈주 플레이어는 자동 패배 처리됩니다.`,
+      player1Score: remainingIsP1 ? 100 : 0,
+      player2Score: remainingIsP1 ? 0 : 100,
+      aiPlayer1Score: 50, aiPlayer2Score: 50,
+      votePlayer1: 50, votePlayer2: 50, totalVotes: 0,
+      players: room.players.map(p => p.nickname),
+      messages: room.messages, topic: room.topic, bestMessage: '',
+    }
+    saveResult(room.id, fallbackPayload)
+    room.lastResult = fallbackPayload
+    room.state = 'done'
+    io.to(room.id).emit('game-result', fallbackPayload)
   }
 }
 
@@ -507,8 +521,12 @@ io.on('connection', socket => {
     } else {
       const removedRoom = removePlayerFromRoom(socket.id)
       if (removedRoom) {
-        if (removedRoom.botJoinTimer) clearTimeout(removedRoom.botJoinTimer)
-        io.to(removedRoom.id).emit('opponent-left')
+        if (removedRoom.state === 'judging' || removedRoom.state === 'done') {
+          // 게임 마무리 중 → game-result가 올 것이므로 opponent-left 미발송
+        } else {
+          if (removedRoom.botJoinTimer) clearTimeout(removedRoom.botJoinTimer)
+          io.to(removedRoom.id).emit('opponent-left')
+        }
         io.emit('room-list', getRoomList())
         io.emit('battling-list', getBattlingRoomList())
       } else {

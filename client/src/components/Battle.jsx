@@ -154,9 +154,8 @@ export default function Battle() {
         resetTimer(Math.max(1, TURN_DURATION - elapsed))
       }
     },
-    'rejoin-error': ({ message }) => {
+    'rejoin-error': () => {
       sessionStorage.removeItem('battleSession')
-      alert(`재접속 실패: ${message}`)
       navigate('/')
     },
     'spectator-list': (list) => setSpectators(list),
@@ -184,6 +183,20 @@ export default function Battle() {
       return
     }
 
+    // 소켓 자동 재연결 대비 세션 저장
+    sessionStorage.setItem('battleSession', JSON.stringify({ roomId, nickname }))
+
+    // 소켓 자동 재연결(socket.id 변경) 시 서버에 rejoin 요청
+    const handleConnect = () => {
+      const raw = sessionStorage.getItem('battleSession')
+      if (!raw) return
+      try {
+        const { roomId: r, nickname: n } = JSON.parse(raw)
+        socket.emit('rejoin-room', { roomId: r, nickname: n })
+      } catch {}
+    }
+    socket.on('connect', handleConnect)
+
     const stored = sessionStorage.getItem('gameData')
     if (stored) {
       const data = JSON.parse(stored)
@@ -206,7 +219,9 @@ export default function Battle() {
     window.addEventListener('popstate', onPop)
 
     return () => {
+      socket.off('connect', handleConnect)
       window.removeEventListener('popstate', onPop)
+      sessionStorage.removeItem('battleSession')
       if (timerRef.current) clearInterval(timerRef.current)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       if (voteTimerRef.current) clearInterval(voteTimerRef.current)
