@@ -59,6 +59,12 @@ app.get('/api/result/:roomId', (req, res) => {
   res.json(result)
 })
 
+app.get('/api/room/:roomId', (req, res) => {
+  const room = getRoom(req.params.roomId)
+  if (!room) return res.json({ exists: false })
+  res.json({ exists: true, state: room.state })
+})
+
 function startTurnTimer(room) {
   if (room.timer) clearTimeout(room.timer)
 

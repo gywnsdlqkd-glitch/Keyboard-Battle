@@ -40,6 +40,13 @@ export default function Room() {
   }, [nickname, topic, navigate])
 
   useEffect(() => {
+    fetch(`/api/room/${roomId}`)
+      .then(r => r.json())
+      .then(data => { if (!data.exists) navigate('/') })
+      .catch(() => navigate('/'))
+  }, [])
+
+  useEffect(() => {
     return () => {
       if (!gameStartedRef.current) {
         socket.emit('leave-waiting-room', { roomId })
