@@ -442,6 +442,18 @@ io.on('connection', socket => {
     io.to(room.id).emit('vote-update', { voteCount, votedProfiles })
   })
 
+  socket.on('leave-waiting-room', ({ roomId }) => {
+    const room = getRoom(roomId)
+    if (!room || room.state !== 'waiting') return
+
+    const removedRoom = removePlayerFromRoom(socket.id)
+    if (removedRoom) {
+      if (removedRoom.botJoinTimer) clearTimeout(removedRoom.botJoinTimer)
+      io.to(removedRoom.id).emit('opponent-left')
+      io.emit('room-list', getRoomList())
+    }
+  })
+
   socket.on('disconnect', () => {
     const room = markPlayerDisconnected(socket.id)
 

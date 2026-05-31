@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 
@@ -11,6 +11,7 @@ export default function Room() {
   const [opponent, setOpponent] = useState(sessionStorage.getItem('opponent') || null)
   const [countdown, setCountdown] = useState(null)
   const [botCountdown, setBotCountdown] = useState(null)
+  const gameStartedRef = useRef(false)
 
   const socket = useSocket({
     'player-joined': ({ nickname: opponentNick }) => {
@@ -24,6 +25,7 @@ export default function Room() {
       setBotCountdown(Math.floor(delay / 1000))
     },
     'game-start': (gameData) => {
+      gameStartedRef.current = true
       sessionStorage.setItem('gameData', JSON.stringify(gameData))
       navigate(`/battle/${roomId}`)
     },
@@ -36,6 +38,14 @@ export default function Room() {
   useEffect(() => {
     if (!nickname || !topic) navigate('/')
   }, [nickname, topic, navigate])
+
+  useEffect(() => {
+    return () => {
+      if (!gameStartedRef.current) {
+        socket.emit('leave-waiting-room', { roomId })
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (botCountdown === null || botCountdown <= 0 || opponent) return
