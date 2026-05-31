@@ -4,8 +4,8 @@ export const BOT_NICKNAME = 'AI봇'
 
 // ── 봇 설정 변수 ──────────────────────────────────────────
 const BOT_MODEL = 'gemini-2.5-flash'
-const BOT_MAX_TOKENS = 250        // 응답 최대 토큰 수 (높을수록 더 길게 말함)
-const BOT_THINKING_BUDGET = 1000  // 사고 예산 (높을수록 논리적이나 느려짐, 0=비활성)
+const BOT_MAX_TOKENS = 300        // 응답 최대 토큰 수 (높을수록 더 길게 말함)
+const BOT_THINKING_BUDGET = 0     // 사고 예산 (0=비활성, >0이면 maxOutputTokens 공유 주의)
 // ─────────────────────────────────────────────────────────
 
 function createModel() {
