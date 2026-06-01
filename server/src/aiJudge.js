@@ -11,16 +11,15 @@ export const JUDGE_WEIGHTS = {
 const RETRYABLE_CODES = ['503', '429', '500']
 const MAX_ATTEMPTS = 4
 
-function createModel() {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  return genAI.getGenerativeModel({
-    model: MODEL,
-    generationConfig: {
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 600,
-    },
-  })
-}
+// 모델 인스턴스를 모듈 레벨에서 한 번만 생성
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const judgeModel = genAI.getGenerativeModel({
+  model: MODEL,
+  generationConfig: {
+    thinkingConfig: { thinkingBudget: 0 },
+    maxOutputTokens: 600,
+  },
+})
 
 async function tryGenerate(model, prompt) {
   const result = await model.generateContent(prompt)
@@ -64,11 +63,9 @@ ${chatLog}
 JSON으로만 답해:
 {"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"채팅 기록 중 실제 메시지 원문, 없으면 빈 문자열"}`
 
-  const model = createModel()
-
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      return await tryGenerate(model, prompt)
+      return await tryGenerate(judgeModel, prompt)
     } catch (err) {
       const isRetryable = RETRYABLE_CODES.some(code => err?.message?.includes(code))
       console.error(`AI 판정 오류 (시도 ${attempt}/${MAX_ATTEMPTS}):`, err?.message ?? err)

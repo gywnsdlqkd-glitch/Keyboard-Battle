@@ -1,13 +1,14 @@
 import { judge } from './aiJudge.js'
 import { BOT_NICKNAME, generateBotMessage } from './aiBot.js'
 import {
-  getRoomList, getBattlingRoomList, startGame, nextTurn, saveResult,
+  getRoomList, getBattlingRoomList, startGame, nextTurn, saveResult, deleteResult, deleteRoom,
 } from './gameManager.js'
 import {
   TURNS_PER_PLAYER, TURN_DURATION_MS, VOTE_DURATION_MS,
   AI_RESULT_WEIGHT, VOTE_RESULT_WEIGHT,
   BOT_RESPONSE_DELAY_MIN, BOT_RESPONSE_DELAY_RANGE,
   BOT_TYPING_INTERVAL_MS, BOT_MESSAGE_PAUSE_MS,
+  ROOM_CLEANUP_DELAY_MS,
 } from './constants.js'
 
 export function createGameEngine(io) {
@@ -129,6 +130,7 @@ export function createGameEngine(io) {
       room.lastResult = resultPayload
       room.state = 'done'
       io.to(room.id).emit('game-result', resultPayload)
+      setTimeout(() => { deleteRoom(room.id); deleteResult(room.id) }, ROOM_CLEANUP_DELAY_MS)
     } catch {
       const remainingIsP1 = remainingPlayer?.nickname === room.players[0].nickname
       const fallbackPayload = {
@@ -145,6 +147,7 @@ export function createGameEngine(io) {
       room.lastResult = fallbackPayload
       room.state = 'done'
       io.to(room.id).emit('game-result', fallbackPayload)
+      setTimeout(() => { deleteRoom(room.id); deleteResult(room.id) }, ROOM_CLEANUP_DELAY_MS)
     }
   }
 
@@ -182,10 +185,22 @@ export function createGameEngine(io) {
         }, VOTE_DURATION_MS)
       })
 
-      const [judgment] = await Promise.all([
-        judge(room.topic, room.players, room.messages),
-        closeVotes,
-      ])
+      let judgment
+      try {
+        ;[judgment] = await Promise.all([
+          judge(room.topic, room.players, room.messages),
+          closeVotes,
+        ])
+      } catch (err) {
+        console.error('[handleTurnEnd] AI 판정 오류:', err?.message ?? err)
+        judgment = {
+          winner: room.players[0].nickname,
+          comment: 'AI 판정 중 오류가 발생했습니다. 임시로 선공 플레이어를 승자로 선정합니다.',
+          player1Score: 50,
+          player2Score: 50,
+          bestMessage: '',
+        }
+      }
 
       const totalVotes = room.votes.length
       const votesFor0 = room.votes.filter(v => v.playerIndex === 0).length
@@ -228,6 +243,8 @@ export function createGameEngine(io) {
       room.lastResult = resultPayload
       room.state = 'done'
       io.to(room.id).emit('game-result', resultPayload)
+      // 30분 후 방과 결과 자동 정리 (메모리 누수 방지)
+      setTimeout(() => { deleteRoom(room.id); deleteResult(room.id) }, ROOM_CLEANUP_DELAY_MS)
       return
     }
 

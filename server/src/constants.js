@@ -6,6 +6,8 @@ export const RECONNECT_GRACE_MS       = 15_000
 export const AI_RESULT_WEIGHT         = 0.5
 export const VOTE_RESULT_WEIGHT       = 0.5
 
+export const ROOM_CLEANUP_DELAY_MS    = 30 * 60 * 1000  // 완료 방 30분 후 자동 정리
+
 // Bot turn 타이밍
 export const BOT_RESPONSE_DELAY_MIN   = 1500
 export const BOT_RESPONSE_DELAY_RANGE = 2000

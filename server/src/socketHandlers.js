@@ -200,6 +200,7 @@ export function registerSocketHandlers(socket, io, engine) {
   })
 
   socket.on('submit-vote', ({ roomId, playerIndex }) => {
+    if (playerIndex !== 0 && playerIndex !== 1) return
     const room = getRoom(roomId)
     if (!room || !room.voteOpen) return
 

@@ -12,6 +12,10 @@ export function getResult(roomId) {
   return results.get(roomId) || null
 }
 
+export function deleteResult(roomId) {
+  results.delete(roomId)
+}
+
 export function createRoom(hostSocketId, nickname, topic) {
   const roomId = uuidv4().slice(0, 6).toUpperCase()
   const room = {
