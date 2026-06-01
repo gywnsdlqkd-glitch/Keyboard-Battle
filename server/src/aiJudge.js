@@ -55,8 +55,9 @@ export async function judge(topic, players, messages) {
 ${chatLog}
 
 규칙:
-- bestMessage는 반드시 위 채팅 기록에 있는 메시지 원문 중 하나를 그대로 인용해야 한다.
+- bestMessage는 반드시 winner가 입력한 채팅 기록 중 실제 원문을 그대로 인용해야 한다.
 - 채팅 기록에 없는 내용은 절대 만들거나 변형하지 않는다.
+- player1Score === player2Score(동점)이면 bestMessage는 빈 문자열을 반환한다.
 - winner는 반드시 player1Score와 player2Score 중 더 높은 점수를 받은 플레이어여야 한다. player1Score가 높으면 winner는 ${players[0].nickname}, player2Score가 높으면 winner는 ${players[1].nickname}.
 - comment의 평가 내용도 반드시 점수가 높은 플레이어를 긍정적으로 묘사해야 한다.
 

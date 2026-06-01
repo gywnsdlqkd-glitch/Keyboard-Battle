@@ -108,6 +108,8 @@ export function createGameEngine(io) {
       const winner = remainingPlayer?.nickname || judgment.winner
       const comment = judgment.comment + `\n\n[탈주 판정] ${leavingNickname}이(가) 게임 도중 나갔습니다. 탈주 플레이어는 자동 패배 처리됩니다.`
       const remainingIsP1 = remainingPlayer?.nickname === room.players[0].nickname
+      const winnerTexts = room.messages.filter(m => m.nickname === winner).map(m => m.text)
+      const validatedBestMessage = winnerTexts.includes(judgment.bestMessage) ? judgment.bestMessage : ''
       const resultPayload = {
         winner,
         comment,
@@ -121,7 +123,7 @@ export function createGameEngine(io) {
         players: room.players.map(p => p.nickname),
         messages: room.messages,
         topic: room.topic,
-        bestMessage: judgment.bestMessage,
+        bestMessage: validatedBestMessage,
       }
       saveResult(room.id, resultPayload)
       room.lastResult = resultPayload
@@ -200,6 +202,13 @@ export function createGameEngine(io) {
                         : finalScore1 > finalScore0 ? room.players[1].nickname
                         : scoreBasedWinner
 
+      // bestMessage는 최종 승자의 메시지에서만 선별; 동점이면 없음
+      const isDraw = finalScore0 === finalScore1
+      const winnerTexts = room.messages.filter(m => m.nickname === finalWinner).map(m => m.text)
+      const validatedBestMessage = isDraw || !winnerTexts.includes(judgment.bestMessage)
+        ? ''
+        : judgment.bestMessage
+
       const resultPayload = {
         winner: finalWinner,
         comment: judgment.comment,
@@ -213,7 +222,7 @@ export function createGameEngine(io) {
         players: room.players.map(p => p.nickname),
         messages: room.messages,
         topic: room.topic,
-        bestMessage: judgment.bestMessage,
+        bestMessage: validatedBestMessage,
       }
       saveResult(room.id, resultPayload)
       room.lastResult = resultPayload

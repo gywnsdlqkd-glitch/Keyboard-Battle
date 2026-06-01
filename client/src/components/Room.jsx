@@ -22,9 +22,6 @@ export default function Room() {
     'countdown': ({ count }) => {
       setCountdown(count)
     },
-    'bot-timer-started': ({ delay }) => {
-      setBotCountdown(Math.floor(delay / 1000))
-    },
     'game-start': (gameData) => {
       gameStartedRef.current = true
       sessionStorage.setItem('freshBattleEntry', 'true')
@@ -46,6 +43,16 @@ export default function Room() {
       .then(r => r.json())
       .then(data => { if (!data.exists) navigate('/') })
       .catch(() => navigate('/'))
+
+    // Lobby.jsx에서 저장한 botTimer 정보로 남은 카운트다운 계산
+    const startedAt = Number(sessionStorage.getItem('botTimerStartedAt') || '0')
+    const delay = Number(sessionStorage.getItem('botTimerDelay') || '0')
+    if (startedAt && delay) {
+      const remaining = Math.ceil((delay - (Date.now() - startedAt)) / 1000)
+      if (remaining > 0) setBotCountdown(remaining)
+      sessionStorage.removeItem('botTimerStartedAt')
+      sessionStorage.removeItem('botTimerDelay')
+    }
   }, [])
 
   useEffect(() => {

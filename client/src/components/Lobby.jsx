@@ -17,13 +17,18 @@ export default function Lobby() {
   const [error, setError] = useState('')
 
   const socket = useSocket({
-    'room-created': ({ roomId, topic, nickname, playerIndex }) => {
+    'room-created': ({ roomId, topic, nickname, playerIndex, botDelay }) => {
       localStorage.setItem('nickname', nickname)
       sessionStorage.setItem('nickname', nickname)
       sessionStorage.setItem('topic', topic)
       sessionStorage.setItem('isHost', 'true')
       sessionStorage.setItem('playerIndex', String(playerIndex))
       sessionStorage.removeItem('opponent')
+      // bot-timer-started 이벤트가 Room.jsx 마운트 전에 소실되는 문제 방지
+      if (botDelay) {
+        sessionStorage.setItem('botTimerStartedAt', String(Date.now()))
+        sessionStorage.setItem('botTimerDelay', String(botDelay))
+      }
       navigate(`/room/${roomId}`)
     },
     'room-joined': ({ roomId, topic, nickname, opponent, playerIndex }) => {

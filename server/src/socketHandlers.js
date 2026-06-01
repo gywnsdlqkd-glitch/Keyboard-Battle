@@ -28,6 +28,7 @@ export function registerSocketHandlers(socket, io, engine) {
       topic: room.topic,
       nickname: nickname.trim(),
       playerIndex: 0,
+      botDelay: BOT_JOIN_DELAY_MS,
     })
 
     io.emit('room-list', getRoomList())
