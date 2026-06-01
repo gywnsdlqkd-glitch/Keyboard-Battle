@@ -74,11 +74,14 @@ export function createGameEngine(io) {
     if (room.state !== 'battling') return
     if (room.turnCount !== capturedTurnCount) return
 
-    room.messages.push({ nickname: bot.nickname, text, turn: room.turnCount, playerIndex: room.currentTurnIndex })
-    io.to(room.id).emit('message-added', { nickname: bot.nickname, text, playerIndex: room.currentTurnIndex })
+    // text가 null이면 API 최종 실패 → 메시지 없이 턴 종료
+    if (text) {
+      room.messages.push({ nickname: bot.nickname, text, turn: room.turnCount, playerIndex: room.currentTurnIndex })
+      io.to(room.id).emit('message-added', { nickname: bot.nickname, text, playerIndex: room.currentTurnIndex })
+      await new Promise(r => setTimeout(r, BOT_MESSAGE_PAUSE_MS))
+      if (room.turnCount !== capturedTurnCount) return
+    }
 
-    await new Promise(r => setTimeout(r, BOT_MESSAGE_PAUSE_MS))
-    if (room.turnCount !== capturedTurnCount) return
     const isLastTurn = room.turnCount + 1 >= TURNS_PER_PLAYER * 2
     if (room.state === 'battling' && !isLastTurn) handleTurnEnd(room)
   }

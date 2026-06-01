@@ -6,6 +6,8 @@ export const BOT_NICKNAME = 'AI봇'
 const BOT_MODEL = 'gemini-2.5-flash'
 const BOT_MAX_TOKENS = 300        // 응답 최대 토큰 수 (높을수록 더 길게 말함)
 const BOT_THINKING_BUDGET = 0     // 사고 예산 (0=비활성, >0이면 maxOutputTokens 공유 주의)
+const BOT_MAX_ATTEMPTS = 3        // 재시도 횟수 (429/503 등 일시적 오류 대응)
+const RETRYABLE_CODES = ['503', '429', '500']
 // ─────────────────────────────────────────────────────────
 
 // 모델 인스턴스를 모듈 레벨에서 한 번만 생성
@@ -36,11 +38,17 @@ ${chatLog || '(아직 대화 없음)'}
 - 근거나 예시를 한 가지 들어 주장을 강화해 (통계, 상식, 일반적 사례 등).
 - 한국어 반말로, 2-3문장 이내로 간결하게 써.
 - 텍스트만 반환.`
-  try {
-    const result = await botModel.generateContent(prompt)
-    return result.response.text().trim()
-  } catch (err) {
-    console.error('[aiBot] 메시지 생성 실패:', err?.message ?? err)
-    return '(일시적 오류로 답변할 수 없습니다.)'
+
+  for (let attempt = 1; attempt <= BOT_MAX_ATTEMPTS; attempt++) {
+    try {
+      const result = await botModel.generateContent(prompt)
+      return result.response.text().trim()
+    } catch (err) {
+      const isRetryable = RETRYABLE_CODES.some(code => err?.message?.includes(code))
+      console.error(`[aiBot] 메시지 생성 실패 (시도 ${attempt}/${BOT_MAX_ATTEMPTS}):`, err?.message ?? err)
+      if (!isRetryable || attempt === BOT_MAX_ATTEMPTS) break
+      await new Promise(r => setTimeout(r, 2 ** attempt * 1000))  // 2초, 4초
+    }
   }
+  return null  // 재시도 후에도 실패하면 null → 봇 턴 조용히 종료
 }
