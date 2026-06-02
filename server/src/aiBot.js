@@ -41,12 +41,12 @@ ${chatLog || '(아직 대화 없음)'}
 - 대화가 없다면: 주제에 대한 뚜렷한 입장을 먼저 밝혀.
 - 근거나 예시를 한 가지 들어 주장을 강화해 (통계, 상식, 일반적 사례 등).
 - 한국어 반말로, 2-3문장 이내로 간결하게 써.
-- 텍스트만 반환.`
+- 순수한 텍스트만 반환. 닉네임, 대괄호([]), 콜론(:) 같은 접두사를 절대 붙이지 마.`
 
   for (let attempt = 1; attempt <= BOT_MAX_ATTEMPTS; attempt++) {
     try {
       const result = await botModel.generateContent(prompt)
-      return result.response.text().trim()
+      return result.response.text().trim().replace(/^\[.*?\]:\s*/, '')
     } catch (err) {
       const isRetryable = RETRYABLE_CODES.some(code => err?.message?.includes(code))
       console.error(`[aiBot] 메시지 생성 실패 (시도 ${attempt}/${BOT_MAX_ATTEMPTS}):`, err?.message ?? err)
