@@ -8,7 +8,7 @@ import {
   AI_RESULT_WEIGHT, VOTE_RESULT_WEIGHT,
   BOT_RESPONSE_DELAY_MIN, BOT_RESPONSE_DELAY_RANGE,
   BOT_TYPING_INTERVAL_MS, BOT_MESSAGE_PAUSE_MS,
-  ROOM_CLEANUP_DELAY_MS,
+  ROOM_CLEANUP_DELAY_MS, BOT_LAST_TURN_GRACE_MS,
 } from './constants.js'
 
 export function createGameEngine(io) {
@@ -84,7 +84,18 @@ export function createGameEngine(io) {
     }
 
     const isLastTurn = room.turnCount + 1 >= TURNS_PER_PLAYER * 2
-    if (room.state === 'battling' && !isLastTurn) handleTurnEnd(room)
+    if (!isLastTurn) {
+      if (room.state === 'battling') handleTurnEnd(room)
+    } else {
+      // 마지막 턴: 봇 메시지 전송 후 30초 남을 때 자동 종료
+      const elapsed = Date.now() - room.turnStartedAt
+      const remaining = (room.turnDurationMs ?? BOT_TURN_DURATION_MS) - elapsed
+      const waitMs = Math.max(0, remaining - BOT_LAST_TURN_GRACE_MS)
+      setTimeout(() => {
+        if (room.turnCount !== capturedTurnCount || room.state !== 'battling') return
+        handleTurnEnd(room)
+      }, waitMs)
+    }
   }
 
   function joinBotToRoom(room) {
