@@ -27,7 +27,7 @@ export async function generateBotMessage(topic, messages, humanNickname, botNick
   const botFirstMessage = messages.find(m => m.nickname === botNickname)?.text
   const positionInstruction = botFirstMessage
     ? `너는 이미 이런 입장을 선언했다: "${botFirstMessage.slice(0, 120)}"\n이 핵심 입장(어느 편을 지지하는지)을 절대 바꾸지 마라. 같은 편을 계속 지지하며 논리를 강화해.`
-    : `상대방(${humanNickname})이 지지하는 입장과 정반대 입장을 선택하고, 이후 절대 바꾸지 마라.`
+    : `상대방 ${humanNickname}가 방금 한 발언을 읽어라. 그가 A를 지지한다면 너는 반드시 B를 지지해야 하고, 그가 B를 지지한다면 너는 반드시 A를 지지해야 한다. 절대 상대방과 같은 편이 되어서는 안 된다. 첫 문장에서 네 입장(상대방의 반대 입장)을 명확하게 선언하고, 이후 절대 바꾸지 마라.`
 
   const prompt = `너는 키보드 배틀 참가자야. 주제는 "${topic}"이야.
 

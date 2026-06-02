@@ -116,6 +116,8 @@ export function useBattleSocket({ roomId, nickname, navigate, resetTimer, startV
       if (tt) setTotalTurns(tt)
       if (td) turnDurationRef.current = td
       sessionStorage.setItem('gameData', JSON.stringify({ players, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, turnDuration: td }))
+      if (endTurnTimeoutRef.current) clearTimeout(endTurnTimeoutRef.current)
+      setEndTurnPending(false)
       if (state === 'judging') {
         stopTimer()
         setIsJudging(true)

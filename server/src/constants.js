@@ -14,4 +14,5 @@ export const BOT_RESPONSE_DELAY_MIN   = 1500
 export const BOT_RESPONSE_DELAY_RANGE = 2000
 export const BOT_TYPING_INTERVAL_MS   = 2000
 export const BOT_MESSAGE_PAUSE_MS     = 800
-export const BOT_LAST_TURN_GRACE_MS   = 30_000  // 마지막 턴 봇 메시지 후 유예 시간
+export const BOT_LAST_TURN_GRACE_MS      = 40_000  // 마지막 턴 봇 메시지 후 유예 시간
+export const BOT_NON_LAST_TURN_PAUSE_MS = 5_000   // 비마지막 턴 봇 종료 전 딜레이
