@@ -4,7 +4,7 @@ import {
   removePlayerFromRoom, markPlayerDisconnected, rejoinRoom,
   addSpectator, removeSpectatorFromRoom,
 } from './gameManager.js'
-import { TURNS_PER_PLAYER, BOT_JOIN_DELAY_MS, RECONNECT_GRACE_MS } from './constants.js'
+import { TURNS_PER_PLAYER, BOT_JOIN_DELAY_MS, RECONNECT_GRACE_MS, TURN_DURATION_MS } from './constants.js'
 
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
@@ -65,6 +65,7 @@ export function registerSocketHandlers(socket, io, engine) {
 
     broadcastCountdown(room)
     setTimeout(() => {
+      room.turnDurationMs = TURN_DURATION_MS
       startGame(room)
       io.to(room.id).emit('game-start', buildGameStartPayload(room))
       io.emit('room-list', getRoomList())
@@ -106,6 +107,7 @@ export function registerSocketHandlers(socket, io, engine) {
       playerIndex,
       state: room.state,
       turnElapsedMs: room.turnStartedAt ? Date.now() - room.turnStartedAt : 0,
+      turnDuration: Math.floor((room.turnDurationMs ?? TURN_DURATION_MS) / 1000),
     })
 
     socket.to(room.id).emit('opponent-reconnected', { nickname: nickname.trim() })
@@ -126,7 +128,7 @@ export function registerSocketHandlers(socket, io, engine) {
     const added = addMessage(room, socket.id, text.trim())
     if (!added) return
 
-    socket.to(room.id).emit('message-added', {
+    io.to(room.id).emit('message-added', {
       nickname: room.players.find(p => p.id === socket.id).nickname,
       text: text.trim(),
       playerIndex: room.currentTurnIndex,
@@ -184,6 +186,7 @@ export function registerSocketHandlers(socket, io, engine) {
       turnCount: room.turnCount,
       totalTurns: TURNS_PER_PLAYER * 2,
       state: room.state,
+      turnDuration: Math.floor((room.turnDurationMs ?? TURN_DURATION_MS) / 1000),
       spectators: room.spectators.map(s => ({ nickname: s.nickname, photoURL: s.photoURL })),
       voteOpen: !!room.voteOpen,
       voteCount: [

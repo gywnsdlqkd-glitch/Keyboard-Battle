@@ -4,7 +4,7 @@ import { useSocket } from '../hooks/useSocket'
 import { useGameTimer } from '../hooks/useGameTimer'
 import { useAuth } from '../contexts/AuthContext'
 import JudgingView from './JudgingView'
-import { TYPING_TIMEOUT_MS } from '../constants'
+import { TYPING_TIMEOUT_MS, TURN_DURATION } from '../constants'
 
 export default function Spectate() {
   const { roomId } = useParams()
@@ -35,6 +35,7 @@ export default function Spectate() {
   const { timeLeft, voteTimeLeft, timerColor, resetTimer, startVoteTimer, stopVoteTimer, cleanup } = useGameTimer()
   const messagesEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+  const turnDurationRef = useRef(TURN_DURATION)
 
   function handleVote(playerIndex) {
     if (!canVote) return
@@ -43,7 +44,7 @@ export default function Spectate() {
   }
 
   const socket = useSocket({
-    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, state, spectators: initSpectators, voteOpen, voteCount: initVoteCount, votedProfiles: initVotedProfiles }) => {
+    'spectate-state': ({ players, topic, messages, currentTurnIndex, currentNickname, turnCount, totalTurns: tt, state, spectators: initSpectators, voteOpen, voteCount: initVoteCount, votedProfiles: initVotedProfiles, turnDuration: td }) => {
       setPlayers(players)
       setTopic(topic)
       setMessages(messages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
@@ -55,10 +56,11 @@ export default function Spectate() {
       if (voteOpen) setCanVote(true)
       if (initVoteCount) setVoteCount(initVoteCount)
       if (initVotedProfiles) setVotedProfiles(initVotedProfiles)
+      if (td) turnDurationRef.current = td
       if (state === 'judging') {
         setIsJudging(true)
       } else {
-        resetTimer()
+        resetTimer(td || TURN_DURATION)
       }
     },
     'spectator-list': (list) => setSpectators(list),
@@ -73,7 +75,7 @@ export default function Spectate() {
         setMessages(serverMessages.map(m => ({ nickname: m.nickname, text: m.text, playerIndex: m.playerIndex })))
       }
       setTimeoutMsg('')
-      resetTimer()
+      resetTimer(turnDurationRef.current)
     },
     'turn-timeout': ({ nickname: timedOutNick }) => {
       setTimeoutMsg(`⏰ ${timedOutNick}이(가) 시간 초과!`)

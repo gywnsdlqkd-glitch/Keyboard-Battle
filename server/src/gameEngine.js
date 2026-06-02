@@ -4,7 +4,7 @@ import {
   getRoomList, getBattlingRoomList, startGame, nextTurn, saveResult, deleteResult, deleteRoom,
 } from './gameManager.js'
 import {
-  TURNS_PER_PLAYER, TURN_DURATION_MS, VOTE_DURATION_MS,
+  TURNS_PER_PLAYER, TURN_DURATION_MS, BOT_TURN_DURATION_MS, VOTE_DURATION_MS,
   AI_RESULT_WEIGHT, VOTE_RESULT_WEIGHT,
   BOT_RESPONSE_DELAY_MIN, BOT_RESPONSE_DELAY_RANGE,
   BOT_TYPING_INTERVAL_MS, BOT_MESSAGE_PAUSE_MS,
@@ -30,6 +30,7 @@ export function createGameEngine(io) {
       currentNickname: room.players[0].nickname,
       turnCount: 0,
       totalTurns: TURNS_PER_PLAYER * 2,
+      turnDuration: Math.floor((room.turnDurationMs ?? TURN_DURATION_MS) / 1000),
     }
   }
 
@@ -40,7 +41,7 @@ export function createGameEngine(io) {
     room.turnStartedAt = Date.now()
     room.timer = setTimeout(() => {
       handleTurnEnd(room, true)
-    }, TURN_DURATION_MS)
+    }, room.turnDurationMs ?? TURN_DURATION_MS)
 
     const currentPlayer = room.players[room.currentTurnIndex]
     if (currentPlayer?.isBot) handleBotTurn(room)
@@ -68,7 +69,7 @@ export function createGameEngine(io) {
       io.to(room.id).emit('typing-indicator', { nickname: bot.nickname })
     }, BOT_TYPING_INTERVAL_MS)
 
-    const text = await generateBotMessage(room.topic, room.messages, humanPlayer?.nickname)
+    const text = await generateBotMessage(room.topic, room.messages, humanPlayer?.nickname, bot.nickname)
     clearInterval(typingInterval)
 
     if (room.state !== 'battling') return
@@ -95,6 +96,7 @@ export function createGameEngine(io) {
     broadcastCountdown(room, () => room.players[1]?.isBot)
     setTimeout(() => {
       if (!room.players[1]?.isBot) return  // 사람이 봇을 교체한 경우 봇 게임 시작 취소
+      room.turnDurationMs = BOT_TURN_DURATION_MS
       startGame(room)
       io.to(room.id).emit('game-start', buildGameStartPayload(room))
       io.emit('room-list', getRoomList())

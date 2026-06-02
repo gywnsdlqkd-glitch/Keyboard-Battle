@@ -1,5 +1,6 @@
 export const TURNS_PER_PLAYER         = 5
-export const TURN_DURATION_MS         = 20_000
+export const TURN_DURATION_MS         = 30_000
+export const BOT_TURN_DURATION_MS     = 60_000
 export const VOTE_DURATION_MS         = 15_000
 export const BOT_JOIN_DELAY_MS        = 30_000
 export const RECONNECT_GRACE_MS       = 15_000

@@ -1,4 +1,4 @@
-export const TURN_DURATION      = 20    // 초
+export const TURN_DURATION      = 30    // 초
 export const TIMER_WARN_SEC     = 10    // 경고 색상 전환 기준
 export const TIMER_CRIT_SEC     = 5     // 위험 색상 전환 기준
 export const MAX_MSG_LENGTH     = 200   // 채팅 메시지 최대 길이
