@@ -62,8 +62,8 @@ export default function Battle() {
 
     const stored = sessionStorage.getItem('gameData')
     if (stored) {
-      // useBattleSocket이 이미 gameData로 상태를 초기화했으므로 타이머만 시작
-      resetTimer()
+      const gameData = JSON.parse(stored)
+      resetTimer(gameData?.turnDuration)
     } else if (!nickname || !topic) {
       navigate('/')
     }
