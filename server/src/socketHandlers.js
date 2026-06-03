@@ -4,10 +4,12 @@ import {
   removePlayerFromRoom, markPlayerDisconnected, rejoinRoom,
   addSpectator, removeSpectatorFromRoom,
 } from './gameManager.js'
-import { TURNS_PER_PLAYER, BOT_JOIN_DELAY_MS, RECONNECT_GRACE_MS, TURN_DURATION_MS } from './constants.js'
+import { TURNS_PER_PLAYER, BOT_JOIN_DELAY_MS, RECONNECT_GRACE_MS, WAITING_GRACE_MS, TURN_DURATION_MS } from './constants.js'
 
 // key: oldSocketId, value: { timer, roomId }
 const pendingDisconnects = new Map()
+// 대기방 호스트 연결 끊김 유예 — key: oldSocketId, value: { timer, roomId }
+const pendingWaitingDisconnects = new Map()
 
 export function registerSocketHandlers(socket, io, engine) {
   const { startTurnTimer, handleTurnEnd, handleOpponentQuit, joinBotToRoom, buildGameStartPayload, broadcastCountdown } = engine
@@ -257,6 +259,31 @@ export function registerSocketHandlers(socket, io, engine) {
     }
   })
 
+  // 대기방 호스트가 잠깐 끊겼다가 다시 연결됐을 때 — 방을 새 소켓으로 복귀
+  socket.on('reclaim-waiting-room', ({ roomId, nickname }) => {
+    if (!roomId?.trim() || !nickname?.trim()) return
+    const room = getRoom(roomId.trim())
+    if (!room || room.state !== 'waiting' || room.players.length !== 1) return
+    const host = room.players[0]
+    if (!host.disconnected || host.nickname !== nickname.trim()) return
+
+    // 삭제 예약(유예 타이머) 취소
+    for (const [oldId, pending] of pendingWaitingDisconnects) {
+      if (pending.roomId === room.id) {
+        clearTimeout(pending.timer)
+        pendingWaitingDisconnects.delete(oldId)
+        break
+      }
+    }
+
+    host.id = socket.id
+    host.disconnected = false
+    socket.join(room.id)
+    room.botJoinTimer = setTimeout(() => joinBotToRoom(room), BOT_JOIN_DELAY_MS)
+    io.emit('room-list', getRoomList())
+    console.log(`대기방 복귀: ${nickname} → 방 ${room.id}`)
+  })
+
   socket.on('disconnect', () => {
     const room = markPlayerDisconnected(socket.id)
 
@@ -276,6 +303,21 @@ export function registerSocketHandlers(socket, io, engine) {
 
       pendingDisconnects.set(socket.id, { timer, roomId: room.id })
     } else {
+      // 대기방 호스트가 잠깐 연결이 끊긴 경우 → 즉시 삭제하지 않고 유예(재접속 대기)
+      const waitingRoom = getRoomBySocketId(socket.id)
+      if (waitingRoom && waitingRoom.state === 'waiting' && waitingRoom.players.length === 1) {
+        waitingRoom.players[0].disconnected = true
+        if (waitingRoom.botJoinTimer) { clearTimeout(waitingRoom.botJoinTimer); waitingRoom.botJoinTimer = null }
+        const timer = setTimeout(() => {
+          pendingWaitingDisconnects.delete(socket.id)
+          const removed = removePlayerFromRoom(socket.id)
+          if (removed) io.emit('room-list', getRoomList())
+        }, WAITING_GRACE_MS)
+        pendingWaitingDisconnects.set(socket.id, { timer, roomId: waitingRoom.id })
+        io.emit('room-list', getRoomList())  // 자리 비운 방은 목록에서 숨김
+        return
+      }
+
       const removedRoom = removePlayerFromRoom(socket.id)
       if (removedRoom) {
         if (removedRoom.state === 'judging' || removedRoom.state === 'done') {

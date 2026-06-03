@@ -33,7 +33,7 @@ export default function Spectate() {
   const [typingNickname, setTypingNickname] = useState('')
 
   const { timeLeft, voteTimeLeft, timerColor, resetTimer, startVoteTimer, stopVoteTimer, cleanup } = useGameTimer()
-  const messagesEndRef = useRef(null)
+  const chatContainerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const turnDurationRef = useRef(TURN_DURATION)
 
@@ -129,8 +129,13 @@ export default function Spectate() {
     }
   }, [])
 
+  function scrollToBottom() {
+    const el = chatContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    requestAnimationFrame(scrollToBottom)
   }, [messages])
 
   if (error) {
@@ -244,7 +249,7 @@ export default function Spectate() {
         )
       })()}
 
-      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100vh-280px)]">
+      <div ref={chatContainerRef} className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100vh-280px)]">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-gray-600 text-sm">배틀이 시작되기를 기다리는 중...</p>
@@ -267,7 +272,6 @@ export default function Spectate() {
                 <p className="text-xs text-gray-500 px-2 animate-pulse">✍️ {typingNickname} 입력 중...</p>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

@@ -13,6 +13,7 @@ export default function Room() {
   const [botCountdown, setBotCountdown] = useState(null)
   const [linkCopied, setLinkCopied] = useState(false)
   const gameStartedRef = useRef(false)
+  const leaveTimerRef = useRef(null)
 
   const socket = useSocket({
     'player-joined': ({ nickname: opponentNick }) => {
@@ -56,11 +57,31 @@ export default function Room() {
   }, [])
 
   useEffect(() => {
+    // StrictMode(개발 모드)의 가짜 마운트→해제→재마운트로 인해
+    // leave-waiting-room이 잘못 발사돼 방이 삭제되는 문제 방지:
+    // 재마운트되면 직전 cleanup이 예약한 나가기 신호를 취소한다.
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current)
+      leaveTimerRef.current = null
+    }
     return () => {
       if (!gameStartedRef.current) {
-        socket.emit('leave-waiting-room', { roomId })
+        leaveTimerRef.current = setTimeout(() => {
+          socket.emit('leave-waiting-room', { roomId })
+        }, 150)
       }
     }
+  }, [])
+
+  useEffect(() => {
+    // 연결이 잠깐 끊겼다가 다시 붙으면 대기방 복귀 요청 (모바일 백그라운드 등)
+    const onReconnect = () => {
+      if (!gameStartedRef.current) {
+        socket.emit('reclaim-waiting-room', { roomId, nickname })
+      }
+    }
+    socket.on('connect', onReconnect)
+    return () => socket.off('connect', onReconnect)
   }, [])
 
   useEffect(() => {

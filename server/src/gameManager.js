@@ -39,6 +39,7 @@ export function joinRoom(roomId, socketId, nickname) {
   const room = rooms.get(roomId)
   if (!room) return { error: '방을 찾을 수 없습니다.' }
   if (room.state !== 'waiting') return { error: '이미 시작된 게임입니다.' }
+  if (room.players[0]?.disconnected) return { error: '방장이 자리를 비웠습니다. 잠시 후 다시 시도하세요.' }
   // 봇이 카운트다운 중이면 사람으로 교체
   if (room.players.length === 2 && room.players[1]?.isBot) {
     room.players.pop()
@@ -61,7 +62,7 @@ export function getRoomBySocketId(socketId) {
 
 export function getRoomList() {
   return [...rooms.values()]
-    .filter(r => r.state === 'waiting' && r.players.length < 2)
+    .filter(r => r.state === 'waiting' && r.players.length < 2 && !r.players[0]?.disconnected)
     .map(r => ({ id: r.id, topic: r.topic, playerCount: r.players.length }))
 }
 

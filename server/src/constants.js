@@ -4,6 +4,7 @@ export const BOT_TURN_DURATION_MS     = 180_000
 export const VOTE_DURATION_MS         = 15_000
 export const BOT_JOIN_DELAY_MS        = 30_000
 export const RECONNECT_GRACE_MS       = 15_000
+export const WAITING_GRACE_MS         = 60_000  // 대기방 호스트 연결 끊김 유예 (재접속 대기)
 export const AI_RESULT_WEIGHT         = 0.5
 export const VOTE_RESULT_WEIGHT       = 0.5
 

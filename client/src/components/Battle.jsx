@@ -13,8 +13,10 @@ export default function Battle() {
   const topic = sessionStorage.getItem('topic')
 
   const [input, setInput] = useState('')
-  const messagesEndRef = useRef(null)
+  const chatContainerRef = useRef(null)
   const inputRef = useRef(null)
+  // 진입 시점에 한 번만 캡처 (StrictMode 이중 실행으로 깃발이 지워져도 흔들리지 않게)
+  const isFreshEntryRef = useRef(sessionStorage.getItem('freshBattleEntry') === 'true')
 
   const { timeLeft, voteTimeLeft, timerColor, resetTimer, startVoteTimer, stopVoteTimer, stopTimer, cleanup: cleanupTimer } = useGameTimer({ enableSounds: true })
 
@@ -34,7 +36,7 @@ export default function Battle() {
   const progress = (turnCount / totalTurns) * 100
 
   useEffect(() => {
-    const isFreshEntry = sessionStorage.getItem('freshBattleEntry') === 'true'
+    const isFreshEntry = isFreshEntryRef.current
     sessionStorage.removeItem('freshBattleEntry')
 
     if (!isFreshEntry) {
@@ -84,8 +86,13 @@ export default function Battle() {
     }
   }, [])
 
+  function scrollToBottom() {
+    const el = chatContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    requestAnimationFrame(scrollToBottom)
   }, [messages])
 
   useEffect(() => {
@@ -107,6 +114,7 @@ export default function Battle() {
   function handleInputChange(e) {
     setInput(e.target.value)
     if (isMyTurn) socket.emit('typing')
+    scrollToBottom()
   }
 
   if (isJudging) {
@@ -195,7 +203,7 @@ export default function Battle() {
         )
       })()}
 
-      <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100dvh-320px)]">
+      <div ref={chatContainerRef} className="flex-1 bg-gray-900 border border-gray-800 rounded-xl p-3 overflow-y-auto mb-3 min-h-[300px] max-h-[calc(100dvh-320px)]">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-gray-600 text-sm">
@@ -220,7 +228,6 @@ export default function Battle() {
                 <p className="text-xs text-gray-500 px-2 animate-pulse">✍️ 상대방 입력 중...</p>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
