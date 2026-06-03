@@ -29,6 +29,15 @@ export async function generateBotMessage(topic, messages, humanNickname, botNick
     ? `너는 이미 이런 입장을 선언했다: "${botFirstMessage.slice(0, 120)}"\n이 핵심 입장(어느 편을 지지하는지)을 절대 바꾸지 마라. 같은 편을 계속 지지하며 논리를 강화해. 절대로 "~는 맞지만" 같은 양보 표현을 쓰거나 네 이전 주장을 스스로 부정하지 마라. 상대방의 비판은 정면으로 반박하되, 항상 네 입장의 강점을 부각시켜.`
     : `상대방 ${humanNickname}가 방금 한 발언을 읽어라. 그가 A를 지지한다면 너는 반드시 B를 지지해야 하고, 그가 B를 지지한다면 너는 반드시 A를 지지해야 한다. 절대 상대방과 같은 편이 되어서는 안 된다. 첫 문장에서 네 입장(상대방의 반대 입장)을 명확하게 선언하고, 이후 절대 바꾸지 마라.`
 
+  // 마지막 발언자가 상대방인지 확인해 반박 지시를 동적으로 결정
+  const lastMessage = messages[messages.length - 1]
+  const humanJustSpoke = lastMessage?.nickname === humanNickname
+  const counterInstruction = messages.length === 0
+    ? '주제에 대한 뚜렷한 입장을 먼저 밝혀.'
+    : humanJustSpoke
+      ? `상대방 ${humanNickname}의 마지막 주장을 정면으로 반박하고, 논리적 약점이나 반례를 짚어.`
+      : '상대방이 아직 반박하지 않았어. 새로운 근거나 구체적인 사례를 들어 네 입장을 더욱 강화해.'
+
   const prompt = `너는 키보드 배틀 참가자야. 주제는 "${topic}"이야.
 
 지금까지 대화:
@@ -37,8 +46,7 @@ ${chatLog || '(아직 대화 없음)'}
 지시사항:
 - 반드시 주제 "${topic}"에 대해서만 말해. 주제와 무관한 말은 절대 하지 마.
 - ${positionInstruction}
-- 대화가 있다면: 상대방의 마지막 주장을 정면으로 반박하고, 논리적 약점이나 반례를 짚어.
-- 대화가 없다면: 주제에 대한 뚜렷한 입장을 먼저 밝혀.
+- ${counterInstruction}
 - 근거나 예시를 한 가지 들어 주장을 강화해 (통계, 상식, 일반적 사례 등).
 - 한국어 반말로, 1-2문장 이내로 간결하게 써.
 - 순수한 텍스트만 반환. 닉네임, 대괄호([]), 콜론(:) 같은 접두사를 절대 붙이지 마.`
