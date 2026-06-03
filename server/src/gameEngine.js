@@ -117,7 +117,7 @@ export function createGameEngine(io) {
     try {
       const judgment = await judge(room.topic, room.players, room.messages)
       const winner = remainingPlayer?.nickname || judgment.winner
-      const comment = judgment.comment + `\n\n[탈주 판정] ${leavingNickname}이(가) 게임 도중 나갔습니다. 탈주 플레이어는 자동 패배 처리됩니다.`
+      const comment = judgment.comment
       const remainingIsP1 = remainingPlayer?.nickname === room.players[0].nickname
       const winnerTexts = room.messages.filter(m => m.nickname === winner).map(m => m.text)
       const validatedBestMessage = winnerTexts.includes(judgment.bestMessage) ? judgment.bestMessage : ''
@@ -145,7 +145,7 @@ export function createGameEngine(io) {
       const remainingIsP1 = remainingPlayer?.nickname === room.players[0].nickname
       const fallbackPayload = {
         winner: remainingPlayer?.nickname || room.players[0].nickname,
-        comment: `[탈주 판정] ${leavingNickname}이(가) 게임 도중 나갔습니다. 탈주 플레이어는 자동 패배 처리됩니다.`,
+        comment: '상대방이 게임을 떠났습니다.',
         player1Score: remainingIsP1 ? 100 : 0,
         player2Score: remainingIsP1 ? 0 : 100,
         aiPlayer1Score: 50, aiPlayer2Score: 50,
