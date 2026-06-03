@@ -27,7 +27,9 @@ export async function generateBotMessage(topic, messages, humanNickname, botNick
   const botFirstMessage = messages.find(m => m.nickname === botNickname)?.text
   const positionInstruction = botFirstMessage
     ? `너는 이미 이런 입장을 선언했다: "${botFirstMessage.slice(0, 120)}"\n이 핵심 입장(어느 편을 지지하는지)을 절대 바꾸지 마라. 같은 편을 계속 지지하며 논리를 강화해. 절대로 "~는 맞지만" 같은 양보 표현을 쓰거나 네 이전 주장을 스스로 부정하지 마라. 상대방의 비판은 정면으로 반박하되, 항상 네 입장의 강점을 부각시켜.`
-    : `상대방 ${humanNickname}가 방금 한 발언을 읽어라. 그가 A를 지지한다면 너는 반드시 B를 지지해야 하고, 그가 B를 지지한다면 너는 반드시 A를 지지해야 한다. 절대 상대방과 같은 편이 되어서는 안 된다. 첫 문장에서 네 입장(상대방의 반대 입장)을 명확하게 선언하고, 이후 절대 바꾸지 마라.`
+    : messages.length > 0
+      ? `상대방 ${humanNickname}가 방금 한 발언을 읽어라. 그가 A를 지지한다면 너는 반드시 B를 지지해야 하고, 그가 B를 지지한다면 너는 반드시 A를 지지해야 한다. 절대 상대방과 같은 편이 되어서는 안 된다. 첫 문장에서 네 입장(상대방의 반대 입장)을 명확하게 선언하고, 이후 절대 바꾸지 마라.`
+      : `주제 "${topic}"에 대한 뚜렷한 입장을 선택해 첫 문장에서 명확하게 선언해라. 이후 절대 바꾸지 마라.`
 
   // 마지막 발언자가 상대방인지 확인해 반박 지시를 동적으로 결정
   const lastMessage = messages[messages.length - 1]
@@ -54,7 +56,9 @@ ${chatLog || '(아직 대화 없음)'}
   for (let attempt = 1; attempt <= BOT_MAX_ATTEMPTS; attempt++) {
     try {
       const result = await botModel.generateContent(prompt)
-      return result.response.text().trim().replace(/^\[.*?\]:\s*/, '')
+      const text = result.response.text().trim().replace(/^\[.*?\]:\s*/, '')
+      if (!text || text === '(아직 대화 없음)') return null
+      return text
     } catch (err) {
       const isRetryable = RETRYABLE_CODES.some(code => err?.message?.includes(code))
       console.error(`[aiBot] 메시지 생성 실패 (시도 ${attempt}/${BOT_MAX_ATTEMPTS}):`, err?.message ?? err)
