@@ -38,6 +38,24 @@ export default function JudgingView({
           </div>
         </div>
 
+        {(() => {
+          const total = voteCount[0] + voteCount[1]
+          const pct0 = total > 0 ? Math.round(voteCount[0] / total * 100) : 50
+          const pct1 = 100 - pct0
+          return (
+            <div className="mb-3">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-yellow-400 font-bold truncate max-w-[45%]">{players[0]} {pct0}%</span>
+                <span className="text-red-400 font-bold truncate max-w-[45%]">{pct1}% {players[1]}</span>
+              </div>
+              <div className="flex rounded-full overflow-hidden h-2">
+                <div className="bg-yellow-400 transition-all duration-500" style={{ width: `${pct0}%` }} />
+                <div className="bg-red-400 transition-all duration-500" style={{ width: `${pct1}%` }} />
+              </div>
+            </div>
+          )
+        })()}
+
         <div className="flex gap-3 mb-3">
           {[0, 1].map(pidx => (
             <div key={pidx} className="flex-1 text-center">

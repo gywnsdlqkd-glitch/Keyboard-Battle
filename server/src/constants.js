@@ -1,6 +1,6 @@
 export const TURNS_PER_PLAYER         = 5
 export const TURN_DURATION_MS         = 30_000
-export const BOT_TURN_DURATION_MS     = 60_000
+export const BOT_TURN_DURATION_MS     = 180_000
 export const VOTE_DURATION_MS         = 15_000
 export const BOT_JOIN_DELAY_MS        = 30_000
 export const RECONNECT_GRACE_MS       = 15_000
@@ -14,5 +14,5 @@ export const BOT_RESPONSE_DELAY_MIN   = 1500
 export const BOT_RESPONSE_DELAY_RANGE = 2000
 export const BOT_TYPING_INTERVAL_MS   = 2000
 export const BOT_MESSAGE_PAUSE_MS     = 800
-export const BOT_LAST_TURN_GRACE_MS      = 40_000  // 마지막 턴 봇 메시지 후 유예 시간
-export const BOT_NON_LAST_TURN_PAUSE_MS = 5_000   // 비마지막 턴 봇 종료 전 딜레이
+export const BOT_TURN_END_DELAY_MS    = 10_000  // 봇 턴 시작 후 자동 종료까지 대기 시간
+export const BOT_SCORE_HANDICAP       = 10      // AI 판정 시 봇 점수 차감량

@@ -8,7 +8,7 @@ import {
   AI_RESULT_WEIGHT, VOTE_RESULT_WEIGHT,
   BOT_RESPONSE_DELAY_MIN, BOT_RESPONSE_DELAY_RANGE,
   BOT_TYPING_INTERVAL_MS, BOT_MESSAGE_PAUSE_MS,
-  ROOM_CLEANUP_DELAY_MS, BOT_LAST_TURN_GRACE_MS, BOT_NON_LAST_TURN_PAUSE_MS,
+  ROOM_CLEANUP_DELAY_MS, BOT_TURN_END_DELAY_MS, BOT_SCORE_HANDICAP,
 } from './constants.js'
 
 export function createGameEngine(io) {
@@ -83,21 +83,13 @@ export function createGameEngine(io) {
       if (room.turnCount !== capturedTurnCount) return
     }
 
-    const isLastTurn = room.turnCount + 1 >= TURNS_PER_PLAYER * 2
-    if (!isLastTurn) {
-      await new Promise(r => setTimeout(r, BOT_NON_LAST_TURN_PAUSE_MS))
+    // 모든 봇 턴: 턴 시작 후 BOT_TURN_END_DELAY_MS(10초)가 지나면 자동 종료
+    const elapsed = Date.now() - room.turnStartedAt
+    const waitMs = Math.max(0, BOT_TURN_END_DELAY_MS - elapsed)
+    setTimeout(() => {
       if (room.turnCount !== capturedTurnCount || room.state !== 'battling') return
       handleTurnEnd(room)
-    } else {
-      // 마지막 턴: 봇 메시지 전송 후 30초 남을 때 자동 종료
-      const elapsed = Date.now() - room.turnStartedAt
-      const remaining = (room.turnDurationMs ?? BOT_TURN_DURATION_MS) - elapsed
-      const waitMs = Math.max(0, remaining - BOT_LAST_TURN_GRACE_MS)
-      setTimeout(() => {
-        if (room.turnCount !== capturedTurnCount || room.state !== 'battling') return
-        handleTurnEnd(room)
-      }, waitMs)
-    }
+    }, waitMs)
   }
 
   function joinBotToRoom(room) {
@@ -219,6 +211,11 @@ export function createGameEngine(io) {
           bestMessage: '',
         }
       }
+
+      // AI봇 핸디캡: 봇의 AI 판정 점수에서 차감
+      const botIdx = room.players.findIndex(p => p.isBot)
+      if (botIdx === 0) judgment.player1Score = Math.max(0, judgment.player1Score - BOT_SCORE_HANDICAP)
+      if (botIdx === 1) judgment.player2Score = Math.max(0, judgment.player2Score - BOT_SCORE_HANDICAP)
 
       const totalVotes = room.votes.length
       const votesFor0 = room.votes.filter(v => v.playerIndex === 0).length

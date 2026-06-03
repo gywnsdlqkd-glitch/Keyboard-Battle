@@ -4,7 +4,7 @@ export const BOT_NICKNAME = 'AI봇'
 
 // ── 봇 설정 변수 ──────────────────────────────────────────
 const BOT_MODEL = 'gemini-2.5-flash'
-const BOT_MAX_TOKENS = 300        // 응답 최대 토큰 수 (높을수록 더 길게 말함)
+const BOT_MAX_TOKENS = 150        // 응답 최대 토큰 수
 const BOT_THINKING_BUDGET = 0     // 사고 예산 (0=비활성, >0이면 maxOutputTokens 공유 주의)
 const BOT_MAX_ATTEMPTS = 3        // 재시도 횟수 (429/503 등 일시적 오류 대응)
 const RETRYABLE_CODES = ['503', '429', '500']
@@ -40,7 +40,7 @@ ${chatLog || '(아직 대화 없음)'}
 - 대화가 있다면: 상대방의 마지막 주장을 정면으로 반박하고, 논리적 약점이나 반례를 짚어.
 - 대화가 없다면: 주제에 대한 뚜렷한 입장을 먼저 밝혀.
 - 근거나 예시를 한 가지 들어 주장을 강화해 (통계, 상식, 일반적 사례 등).
-- 한국어 반말로, 2-3문장 이내로 간결하게 써.
+- 한국어 반말로, 1-2문장 이내로 간결하게 써.
 - 순수한 텍스트만 반환. 닉네임, 대괄호([]), 콜론(:) 같은 접두사를 절대 붙이지 마.`
 
   for (let attempt = 1; attempt <= BOT_MAX_ATTEMPTS; attempt++) {

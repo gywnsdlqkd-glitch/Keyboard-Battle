@@ -10,7 +10,7 @@ import { TURNS_PER_PLAYER, BOT_JOIN_DELAY_MS, RECONNECT_GRACE_MS, TURN_DURATION_
 const pendingDisconnects = new Map()
 
 export function registerSocketHandlers(socket, io, engine) {
-  const { startTurnTimer, handleOpponentQuit, joinBotToRoom, buildGameStartPayload, broadcastCountdown } = engine
+  const { startTurnTimer, handleTurnEnd, handleOpponentQuit, joinBotToRoom, buildGameStartPayload, broadcastCountdown } = engine
 
   console.log('접속:', socket.id)
 
@@ -113,7 +113,15 @@ export function registerSocketHandlers(socket, io, engine) {
     socket.to(room.id).emit('opponent-reconnected', { nickname: nickname.trim() })
 
     if (room.state === 'battling' && !room.timer) {
-      startTurnTimer(room)
+      const currentPlayer = room.players[room.currentTurnIndex]
+      if (currentPlayer?.isBot) {
+        // handleBotTurn 이미 실행 중 → safety timer만 복구 (중복 실행 방지)
+        const elapsed = room.turnStartedAt ? Date.now() - room.turnStartedAt : 0
+        const remaining = Math.max(5000, (room.turnDurationMs ?? TURN_DURATION_MS) - elapsed)
+        room.timer = setTimeout(() => handleTurnEnd(room, true), remaining)
+      } else {
+        startTurnTimer(room)
+      }
     }
 
     console.log(`재접속: ${nickname} → 방 ${roomId}`)
@@ -228,6 +236,13 @@ export function registerSocketHandlers(socket, io, engine) {
         .filter(Boolean)
     )
     io.to(room.id).emit('vote-update', { voteCount, votedProfiles })
+  })
+
+  socket.on('request-bot', ({ roomId }) => {
+    const room = getRoom(roomId?.trim())
+    if (!room || room.state !== 'waiting' || room.players.length !== 1) return
+    if (room.botJoinTimer) { clearTimeout(room.botJoinTimer); room.botJoinTimer = null }
+    joinBotToRoom(room)
   })
 
   socket.on('leave-waiting-room', ({ roomId }) => {

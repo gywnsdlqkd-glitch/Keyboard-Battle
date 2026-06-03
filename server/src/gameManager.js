@@ -173,8 +173,9 @@ export function rejoinRoom(roomId, newSocketId, nickname) {
   if (!room) return { error: '방을 찾을 수 없습니다.' }
   if (room.state !== 'battling' && room.state !== 'judging') return { error: '진행 중이 아닌 게임입니다.' }
 
-  const player = room.players.find(p => p.nickname === nickname && p.disconnected)
+  const player = room.players.find(p => p.nickname === nickname && !p.isBot)
   if (!player) return { error: '재접속할 수 없습니다.' }
+  if (player.id === newSocketId) return { error: '이미 접속 중입니다.' }
 
   const oldSocketId = player.id
   player.id = newSocketId

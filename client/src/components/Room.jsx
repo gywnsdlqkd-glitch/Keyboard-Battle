@@ -126,6 +126,14 @@ export default function Room() {
                       </span>
                     )}
                   </div>
+                  {botCountdown > 0 && (
+                    <button
+                      onClick={() => socket.emit('request-bot', { roomId })}
+                      className="ml-auto text-xs font-bold px-3 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition active:scale-95"
+                    >
+                      AI 바로 입장
+                    </button>
+                  )}
                 </div>
               )}
             </>
