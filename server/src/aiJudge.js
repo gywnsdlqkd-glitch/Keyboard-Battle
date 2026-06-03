@@ -54,14 +54,14 @@ export async function judge(topic, players, messages) {
 ${chatLog}
 
 규칙:
-- bestMessage는 반드시 winner가 입력한 채팅 기록 중 실제 원문을 그대로 인용해야 한다.
-- 채팅 기록에 없는 내용은 절대 만들거나 변형하지 않는다.
-- player1Score === player2Score(동점)이면 bestMessage는 빈 문자열을 반환한다.
 - winner는 반드시 player1Score와 player2Score 중 더 높은 점수를 받은 플레이어여야 한다. player1Score가 높으면 winner는 ${players[0].nickname}, player2Score가 높으면 winner는 ${players[1].nickname}.
 - comment의 평가 내용도 반드시 점수가 높은 플레이어를 긍정적으로 묘사해야 한다.
+- player1Score === player2Score(동점)이면 bestMessage는 반드시 빈 문자열("")을 반환한다.
+- 동점이 아닌 경우, bestMessage는 반드시 winner의 채팅 발언 중 가장 인상적인 1개를 원문 그대로 인용해야 한다. 절대 비워두거나 변형하지 마라.
+- 채팅 기록에 없는 내용은 절대 만들지 않는다.
 
 JSON으로만 답해:
-{"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"채팅 기록 중 실제 메시지 원문, 없으면 빈 문자열"}`
+{"winner":"${players[0].nickname} 또는 ${players[1].nickname}","comment":"판정 코멘트 2-3줄","player1Score":숫자,"player2Score":숫자,"bestMessage":"winner 발언 원문(동점이면 빈 문자열)"}`
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {

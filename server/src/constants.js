@@ -15,4 +15,4 @@ export const BOT_RESPONSE_DELAY_RANGE = 2000
 export const BOT_TYPING_INTERVAL_MS   = 2000
 export const BOT_MESSAGE_PAUSE_MS     = 800
 export const BOT_TURN_END_DELAY_MS    = 10_000  // 봇 턴 시작 후 자동 종료까지 대기 시간
-export const BOT_SCORE_HANDICAP       = 10      // AI 판정 시 봇 점수 차감량
+export const BOT_SCORE_HANDICAP       = 20      // AI 판정 시 봇 점수 차감량

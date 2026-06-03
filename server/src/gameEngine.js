@@ -232,12 +232,14 @@ export function createGameEngine(io) {
                         : finalScore1 > finalScore0 ? room.players[1].nickname
                         : scoreBasedWinner
 
-      // bestMessage는 최종 승자의 메시지에서만 선별; 동점이면 없음
       const isDraw = finalScore0 === finalScore1
       const winnerTexts = room.messages.filter(m => m.nickname === finalWinner).map(m => m.text)
-      const validatedBestMessage = isDraw || !winnerTexts.includes(judgment.bestMessage)
-        ? ''
-        : judgment.bestMessage
+      let validatedBestMessage = ''
+      if (!isDraw && winnerTexts.length > 0) {
+        validatedBestMessage = winnerTexts.includes(judgment.bestMessage)
+          ? judgment.bestMessage
+          : winnerTexts[winnerTexts.length - 1]
+      }
 
       const resultPayload = {
         winner: finalWinner,
